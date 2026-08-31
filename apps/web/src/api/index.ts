@@ -17,6 +17,12 @@ export const questionsApi = {
   create: (data: any) => request.post<any, Question>('/questions', data),
   update: (id: number, data: any) => request.patch<any, Question>(`/questions/${id}`, data),
   remove: (id: number) => request.delete(`/questions/${id}`),
+  restore: (id: number) => request.post<any, any>(`/questions/${id}/restore`),
+  permanentDelete: (id: number) => request.delete(`/questions/${id}/permanent`),
+  batchDelete: (ids: number[]) => request.post<any, any>('/questions/batch/delete', { ids }),
+  batchUpdate: (data: { ids: number[]; difficulty?: number; knowledgePointId?: number; tagIds?: number[] }) =>
+    request.post<any, any>('/questions/batch/update', data),
+  getAuditLogs: (id: number) => request.get<any, any[]>(`/questions/${id}/audit-logs`),
 };
 
 export const knowledgePointsApi = {

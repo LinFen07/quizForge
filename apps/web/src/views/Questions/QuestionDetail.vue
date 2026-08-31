@@ -5,8 +5,13 @@
       <div class="header-actions">
         <button class="secondary" @click="router.back()">返回</button>
         <button class="secondary" @click="openEdit()">编辑</button>
-        <button class="danger" @click="handleDelete">删除</button>
+        <button v-if="question.deletedAt" class="primary" @click="handleRestore">恢复</button>
+        <button v-else class="danger" @click="handleDelete">删除</button>
       </div>
+    </div>
+
+    <div v-if="question.deletedAt" class="deleted-banner">
+      此题目已删除
     </div>
 
     <div class="card">
@@ -34,6 +39,15 @@
       <div v-for="r in question.practiceRecords" :key="r.id" class="record-item">
         <span :class="['result', r.result]">{{ r.result }}</span>
         <span class="time">{{ new Date(r.practicedAt).toLocaleString() }}</span>
+      </div>
+    </div>
+
+    <div v-if="auditLogs.length > 0" class="card">
+      <h3>操作记录</h3>
+      <div v-for="log in auditLogs" :key="log.id" class="audit-item">
+        <span :class="['audit-action', log.action]">{{ log.action }}</span>
+        <span class="audit-time">{{ new Date(log.createdAt).toLocaleString() }}</span>
+        <span v-if="log.changes" class="audit-changes">{{ formatChanges(log.changes) }}</span>
       </div>
     </div>
 
@@ -104,7 +118,8 @@ import Modal from '@/components/Modal.vue';
 
 const route = useRoute();
 const router = useRouter();
-const question = ref<Question | null>(null);
+const question = ref<any>(null);
+const auditLogs = ref<any[]>([]);
 
 const showModal = ref(false);
 const submitting = ref(false);
@@ -139,6 +154,7 @@ const flatKnowledgePoints = computed(() => {
 async function fetchQuestion() {
   const id = Number(route.params.id);
   question.value = await questionsApi.get(id);
+  auditLogs.value = await questionsApi.getAuditLogs(id);
 }
 
 function openEdit() {
@@ -148,7 +164,7 @@ function openEdit() {
     type: question.value.type,
     difficulty: question.value.difficulty,
     knowledgePointId: question.value.knowledgePointId,
-    tagIds: question.value.tags?.map(t => t.id) || [],
+    tagIds: question.value.tags?.map((t: any) => t.id) || [],
     referenceAnswer: question.value.referenceAnswer || '',
     source: question.value.source || '',
   });
@@ -184,6 +200,26 @@ async function handleDelete() {
   }
 }
 
+async function handleRestore() {
+  if (!question.value) return;
+
+  try {
+    await questionsApi.restore(question.value.id);
+    await fetchQuestion();
+  } catch (err: any) {
+    alert(err.message || '恢复失败');
+  }
+}
+
+function formatChanges(changes: string) {
+  try {
+    const obj = JSON.parse(changes);
+    return Object.keys(obj).join(', ');
+  } catch {
+    return '';
+  }
+}
+
 onMounted(async () => {
   await fetchQuestion();
   const [kp, tag] = await Promise.all([
@@ -210,9 +246,19 @@ onMounted(async () => {
   background: #b91c1c;
 }
 
+.deleted-banner {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
 .q-header {
   display: flex;
-  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
   margin-bottom: 0.5rem;
 }
 
@@ -272,6 +318,34 @@ onMounted(async () => {
 .time {
   color: #9ca3af;
   font-size: 0.875rem;
+}
+
+.audit-item {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.875rem;
+}
+
+.audit-action {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.audit-action.create { background: #dcfce7; color: #166534; }
+.audit-action.update { background: #dbeafe; color: #1e40af; }
+.audit-action.delete { background: #fee2e2; color: #991b1b; }
+.audit-action.restore { background: #fef3c7; color: #92400e; }
+
+.audit-time {
+  color: #9ca3af;
+}
+
+.audit-changes {
+  color: #6b7280;
 }
 
 .form-group {
