@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
@@ -8,6 +8,7 @@ import { TagsModule } from './modules/tags/tags.module';
 import { PracticeModule } from './modules/practice/practice.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
+import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 
 @Module({
   imports: [
@@ -25,4 +26,8 @@ import { ImportExportModule } from './modules/import-export/import-export.module
     ImportExportModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
