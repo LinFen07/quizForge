@@ -1,10 +1,10 @@
 // prisma/schema.prisma
-// 面试题库平台 - 数据库设计 v2
+// 面试题库平台 - 数据库设计 v3
 // 核心改进：
-//   1. Question 不存派生数据（mastery/reviewCount/lastReviewedAt），全部从 practice_records 实时计算
-//   2. PracticeSession 记录一次刷题会话，支持批量练习统计
-//   3. SpacedReputation 支持 SM-2 间隔复习算法
-//   4. 题型/结果用 string enum 约束，SQLite 下通过 CHECK 实现
+//   1. Question 不存派生数据，全部从 practice_records 实时计算
+//   2. 软删除支持（deletedAt）
+//   3. 操作审计日志（AuditLog）
+//   4. 题型/结果用 string enum 约束
 
 generator client {
   provider = "prisma-client-js"
@@ -61,6 +61,7 @@ model Question {
   source           String?   // 来源描述：字节 2024 二面 / 手写题精选 等
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime? // 软删除时间
 
   knowledgePoint KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
   tags            QuestionTag[]
@@ -71,6 +72,7 @@ model Question {
   @@index([type])
   @@index([difficulty])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 // ============================================================
@@ -140,4 +142,20 @@ model SpacedReputation {
   updatedAt     DateTime @updatedAt
 
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// 审计日志：记录所有增删改操作
+// ============================================================
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  entity     String   // 操作实体：question | tag | knowledge_point | practice
+  entityId   Int      // 实体 ID
+  action     String   // 操作类型：create | update | delete | restore
+  changes    String?  // 变更内容 JSON 格式
+  createdAt  DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
 }

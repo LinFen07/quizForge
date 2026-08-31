@@ -1,23 +1,49 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../common/audit.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
 import { QuestionQueryDto } from './dto/question-query.dto';
+import { BatchDeleteDto, BatchUpdateDto } from './dto/batch.dto';
 
 @Injectable()
 export class QuestionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
   async findAll(query: QuestionQueryDto) {
-    const { keyword, knowledgePointId, tagIds, difficulty, type, page = 1, pageSize = 20, sort = 'createdAt' } = query;
+    const {
+      keyword,
+      knowledgePointId,
+      tagIds,
+      difficulty,
+      type,
+      page = 1,
+      pageSize = 20,
+      sort = 'createdAt',
+      order = 'desc',
+      includeDeleted = false,
+    } = query;
 
     const where: any = {};
+
+    // 软删除过滤
+    if (!includeDeleted) {
+      where.deletedAt = null;
+    }
+
+    // 关键词搜索
     if (keyword) {
       where.OR = [
         { title: { contains: keyword } },
         { referenceAnswer: { contains: keyword } },
+        { source: { contains: keyword } },
       ];
     }
+
+    // 筛选条件
     if (knowledgePointId) where.knowledgePointId = knowledgePointId;
     if (difficulty) where.difficulty = difficulty;
     if (type) where.type = type;
@@ -33,7 +59,7 @@ export class QuestionsService {
           tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
           _count: { select: { practiceRecords: true } },
         },
-        orderBy: { [sort]: 'desc' },
+        orderBy: { [sort]: order },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -49,12 +75,18 @@ export class QuestionsService {
       total,
       page,
       pageSize,
+      totalPages: Math.ceil(total / pageSize),
     };
   }
 
-  async findOne(id: number) {
-    const question = await this.prisma.question.findUnique({
-      where: { id },
+  async findOne(id: number, includeDeleted = false) {
+    const where: any = { id };
+    if (!includeDeleted) {
+      where.deletedAt = null;
+    }
+
+    const question = await this.prisma.question.findFirst({
+      where,
       include: {
         knowledgePoint: true,
         tags: { include: { tag: true } },
@@ -64,7 +96,8 @@ export class QuestionsService {
         },
       },
     });
-    if (!question) throw new NotFoundException(`Question #${id} not found`);
+
+    if (!question) throw new NotFoundException(`题目 #${id} 不存在`);
     return {
       ...question,
       tags: question.tags.map((qt) => qt.tag),
@@ -73,9 +106,11 @@ export class QuestionsService {
 
   async create(dto: CreateQuestionDto) {
     const { tagIds, ...data } = dto;
-    return this.prisma.question.create({
+
+    const question = await this.prisma.question.create({
       data: {
         ...data,
+        difficulty: data.difficulty ?? 3,
         tags: tagIds?.length
           ? { create: tagIds.map((tagId) => ({ tagId })) }
           : undefined,
@@ -85,13 +120,23 @@ export class QuestionsService {
         tags: { include: { tag: true } },
       },
     });
+
+    // 审计日志
+    await this.audit.log({
+      entity: 'question',
+      entityId: question.id,
+      action: 'create',
+    });
+
+    return question;
   }
 
   async update(id: number, dto: UpdateQuestionDto) {
-    await this.findOne(id);
+    const old = await this.findOne(id);
     const { tagIds, ...data } = dto;
 
-    return this.prisma.$transaction(async (tx) => {
+    const question = await this.prisma.$transaction(async (tx) => {
+      // 更新标签
       if (tagIds !== undefined) {
         await tx.questionTag.deleteMany({ where: { questionId: id } });
         if (tagIds.length) {
@@ -110,10 +155,165 @@ export class QuestionsService {
         },
       });
     });
+
+    // 记录变更
+    const changes: Record<string, { old: any; new: any }> = {};
+    if (data.title && data.title !== old.title) {
+      changes.title = { old: old.title, new: data.title };
+    }
+    if (data.difficulty && data.difficulty !== old.difficulty) {
+      changes.difficulty = { old: old.difficulty, new: data.difficulty };
+    }
+    if (tagIds) {
+      changes.tags = {
+        old: old.tags.map((t: any) => t.id),
+        new: tagIds,
+      };
+    }
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: id,
+      action: 'update',
+      changes: Object.keys(changes).length > 0 ? changes : undefined,
+    });
+
+    return {
+      ...question,
+      tags: question.tags.map((qt: any) => qt.tag),
+    };
   }
 
   async remove(id: number) {
-    await this.findOne(id);
-    return this.prisma.question.delete({ where: { id } });
+    const question = await this.findOne(id);
+
+    // 软删除
+    await this.prisma.question.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: id,
+      action: 'delete',
+    });
+
+    return { success: true, message: '题目已删除' };
+  }
+
+  async restore(id: number) {
+    const question = await this.prisma.question.findFirst({
+      where: { id, deletedAt: { not: null } },
+    });
+
+    if (!question) throw new NotFoundException(`已删除的题目 #${id} 不存在`);
+
+    await this.prisma.question.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: id,
+      action: 'restore',
+    });
+
+    return { success: true, message: '题目已恢复' };
+  }
+
+  async permanentlyDelete(id: number) {
+    const question = await this.prisma.question.findUnique({ where: { id } });
+    if (!question) throw new NotFoundException(`题目 #${id} 不存在`);
+
+    await this.prisma.question.delete({ where: { id } });
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: id,
+      action: 'delete',
+    });
+
+    return { success: true, message: '题目已永久删除' };
+  }
+
+  async batchDelete(dto: BatchDeleteDto) {
+    const { ids } = dto;
+
+    // 检查是否存在已删除的
+    const questions = await this.prisma.question.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, deletedAt: true },
+    });
+
+    if (questions.length !== ids.length) {
+      throw new BadRequestException('部分题目不存在');
+    }
+
+    // 批量软删除
+    await this.prisma.question.updateMany({
+      where: { id: { in: ids } },
+      data: { deletedAt: new Date() },
+    });
+
+    // 审计日志
+    await this.audit.logBatch({
+      entity: 'question',
+      entityIds: ids,
+      action: 'batch_delete',
+    });
+
+    return {
+      success: true,
+      message: `已删除 ${ids.length} 个题目`,
+      deletedCount: ids.length,
+    };
+  }
+
+  async batchUpdate(dto: BatchUpdateDto) {
+    const { ids, ...data } = dto;
+
+    // 过滤掉 undefined
+    const updateData: any = {};
+    if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
+    if (data.knowledgePointId !== undefined) updateData.knowledgePointId = data.knowledgePointId;
+
+    // 更新题目字段
+    if (Object.keys(updateData).length > 0) {
+      await this.prisma.question.updateMany({
+        where: { id: { in: ids } },
+        data: updateData,
+      });
+    }
+
+    // 更新标签（需要逐个处理）
+    if (data.tagIds !== undefined) {
+      for (const id of ids) {
+        await this.prisma.questionTag.deleteMany({ where: { questionId: id } });
+        if (data.tagIds.length) {
+          await this.prisma.questionTag.createMany({
+            data: data.tagIds.map((tagId) => ({ questionId: id, tagId })),
+          });
+        }
+      }
+    }
+
+    // 审计日志
+    await this.audit.logBatch({
+      entity: 'question',
+      entityIds: ids,
+      action: 'batch_update',
+    });
+
+    return {
+      success: true,
+      message: `已更新 ${ids.length} 个题目`,
+      updatedCount: ids.length,
+    };
+  }
+
+  async getAuditLogs(id: number) {
+    return this.audit.findByEntity('question', id);
   }
 }
