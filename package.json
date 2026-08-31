@@ -1,0 +1,12 @@
+{
+  "name": "interview-quiz",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @interview-quiz/server dev",
+    "dev:web": "pnpm --filter @interview-quiz/web dev",
+    "build": "pnpm --filter @interview-quiz/shared build && pnpm --filter @interview-quiz/server build && pnpm --filter @interview-quiz/web build",
+    "start": "pnpm --filter @interview-quiz/server start:prod",
+    "db:migrate": "pnpm --filter @interview-quiz/server db:migrate",
+    "db:seed": "pnpm --filter @interview-quiz/server db:seed"
+  }
+}
