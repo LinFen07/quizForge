@@ -3,15 +3,23 @@
     <div class="page-header">
       <h1 class="page-title">刷题模式</h1>
       <div class="header-actions">
-        <button v-if="!session" class="primary" @click="startSession">开始刷题</button>
+        <template v-if="!session">
+          <button class="primary" @click="showStartDialog = true">开始刷题</button>
+        </template>
         <template v-else>
-          <div class="session-stats">
-            <span>本次: {{ session.totalQuestions }} 题</span>
-            <span class="correct">✓ {{ session.correctCount }}</span>
-            <span class="wrong">✗ {{ session.wrongCount }}</span>
-            <span class="fuzzy">? {{ session.fuzzyCount }}</span>
+          <div class="session-progress">
+            <span class="progress-text">{{ sessionStats?.answered || 0 }} / {{ sessionStats?.total || 0 }}</span>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+            </div>
           </div>
-          <button class="danger" @click="endSession">结束刷题</button>
+          <div class="session-stats">
+            <span class="correct">✓ {{ sessionStats?.correct || 0 }}</span>
+            <span class="wrong">✗ {{ sessionStats?.wrong || 0 }}</span>
+            <span class="fuzzy">? {{ sessionStats?.fuzzy || 0 }}</span>
+          </div>
+          <button v-if="currentQuestion" class="secondary" @click="handleSkip">跳过</button>
+          <button class="danger" @click="endSession">结束</button>
         </template>
       </div>
     </div>
@@ -23,6 +31,7 @@
         <span v-if="currentQuestion.knowledgePoint" class="kp">{{ currentQuestion.knowledgePoint.name }}</span>
         <span class="diff">{{ '★'.repeat(currentQuestion.difficulty) }}</span>
         <span class="q-type">{{ currentQuestion.type }}</span>
+        <span v-for="tag in currentQuestion.tags" :key="tag.id" class="tag">{{ tag.name }}</span>
         <span class="timer">{{ formatTime(elapsedTime) }}</span>
       </div>
 
@@ -49,48 +58,96 @@
 
     <div v-else class="empty">
       <p v-if="!session">点击「开始刷题」开始练习</p>
+      <p v-else-if="sessionStats?.pending === 0">🎉 本次刷题完成！</p>
       <p v-else>没有更多题目了</p>
     </div>
 
-    <div v-if="session" class="card session-summary">
-      <h3>本次刷题统计</h3>
+    <div v-if="session && sessionStats" class="card session-summary">
+      <h3>本次统计</h3>
       <div class="summary-grid">
         <div class="summary-item">
-          <div class="value">{{ session.totalQuestions }}</div>
+          <div class="value">{{ sessionStats.total }}</div>
           <div class="label">总题数</div>
         </div>
+        <div class="summary-item">
+          <div class="value">{{ sessionStats.pending }}</div>
+          <div class="label">待答</div>
+        </div>
         <div class="summary-item correct">
-          <div class="value">{{ session.correctCount }}</div>
+          <div class="value">{{ sessionStats.correct }}</div>
           <div class="label">答对</div>
         </div>
         <div class="summary-item wrong">
-          <div class="value">{{ session.wrongCount }}</div>
+          <div class="value">{{ sessionStats.wrong }}</div>
           <div class="label">答错</div>
         </div>
         <div class="summary-item fuzzy">
-          <div class="value">{{ session.fuzzyCount }}</div>
+          <div class="value">{{ sessionStats.fuzzy }}</div>
           <div class="label">模糊</div>
         </div>
-      </div>
-      <div class="accuracy" v-if="session.totalQuestions > 0">
-        正确率: {{ Math.round((session.correctCount / session.totalQuestions) * 100) }}%
+        <div class="summary-item">
+          <div class="value">{{ sessionStats.accuracy }}%</div>
+          <div class="label">正确率</div>
+        </div>
       </div>
     </div>
+
+    <Modal :visible="showStartDialog" title="开始刷题" @close="showStartDialog = false" @confirm="handleStartSession">
+      <div class="form-group">
+        <label>出题数量</label>
+        <select v-model.number="startParams.count">
+          <option :value="5">5 题</option>
+          <option :value="10">10 题</option>
+          <option :value="20">20 题</option>
+          <option :value="50">50 题</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>题型筛选</label>
+        <select v-model="startParams.type">
+          <option value="">全部题型</option>
+          <option value="concept">概念题</option>
+          <option value="coding">手写题</option>
+          <option value="scene">场景题</option>
+          <option value="algorithm">算法题</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>难度筛选</label>
+        <select v-model.number="startParams.difficulty">
+          <option :value="0">全部难度</option>
+          <option v-for="d in 5" :key="d" :value="d">{{ '★'.repeat(d) }}</option>
+        </select>
+      </div>
+    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { usePracticeStore } from '@/stores/practice';
 import type { PracticeResult } from '@interview-quiz/shared';
+import Modal from '@/components/Modal.vue';
 
 const store = usePracticeStore();
-const { currentQuestion, loading, showAnswer, toggleAnswer, session } = store;
+const { currentQuestion, loading, showAnswer, toggleAnswer, session, sessionStats } = store;
 
 const myAnswer = ref('');
 const startTime = ref(Date.now());
 const elapsedTime = ref(0);
 let timerInterval: ReturnType<typeof setInterval> | null = null;
+
+const showStartDialog = ref(false);
+const startParams = reactive({
+  count: 10,
+  type: '',
+  difficulty: 0,
+});
+
+const progressPercent = computed(() => {
+  if (!sessionStats.value || !sessionStats.value.total) return 0;
+  return Math.round(((sessionStats.value.total - sessionStats.value.pending) / sessionStats.value.total) * 100);
+});
 
 function formatTime(ms: number) {
   const seconds = Math.floor(ms / 1000);
@@ -116,9 +173,14 @@ function stopTimer() {
   return elapsedTime.value;
 }
 
-async function startSession() {
-  await store.startSession();
-  fetchNext();
+async function handleStartSession() {
+  showStartDialog.value = false;
+  const params: Record<string, any> = {};
+  if (startParams.count) params.count = startParams.count;
+  if (startParams.type) params.type = startParams.type;
+  if (startParams.difficulty) params.difficulty = startParams.difficulty;
+  await store.startSession(Object.keys(params).length > 0 ? params : undefined);
+  startTimer();
 }
 
 async function endSession() {
@@ -126,21 +188,27 @@ async function endSession() {
   await store.endSession();
 }
 
-function fetchNext() {
-  store.fetchRandomQuestion();
+async function handleSkip() {
+  stopTimer();
   myAnswer.value = '';
-  startTimer();
+  await store.skipQuestion();
+  if (currentQuestion.value) startTimer();
 }
 
 async function submit(result: PracticeResult) {
   const durationMs = stopTimer();
   await store.submitAnswer(result, myAnswer.value || undefined);
-  fetchNext();
+  myAnswer.value = '';
+
+  await store.fetchNextQuestion();
+  if (currentQuestion.value) {
+    startTimer();
+  }
 }
 
 onMounted(() => {
   if (session) {
-    fetchNext();
+    startTimer();
   }
 });
 
@@ -154,6 +222,33 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.session-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.progress-bar {
+  width: 120px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }
 
 .session-stats {
@@ -181,9 +276,10 @@ onUnmounted(() => {
 
 .q-info {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .kp {
@@ -201,6 +297,13 @@ onUnmounted(() => {
 .q-type {
   background: #e0e7ff;
   color: #3730a3;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.tag {
+  background: #f3f4f6;
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
@@ -289,7 +392,7 @@ onUnmounted(() => {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 
@@ -312,10 +415,15 @@ onUnmounted(() => {
   margin-top: 0.25rem;
 }
 
-.accuracy {
-  text-align: center;
-  margin-top: 1rem;
-  font-size: 1.125rem;
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
   font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #374151;
 }
 </style>

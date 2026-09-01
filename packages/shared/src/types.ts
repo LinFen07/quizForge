@@ -18,6 +18,13 @@ export interface Tag {
   createdAt: string;
 }
 
+export interface Company {
+  id: number;
+  name: string;
+  alias: string | null;
+  createdAt: string;
+}
+
 export interface Question {
   id: number;
   title: string;
@@ -28,9 +35,12 @@ export interface Question {
   source: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
   knowledgePoint?: KnowledgePoint | null;
   tags?: Tag[];
+  companies?: Company[];
   practiceRecords?: PracticeRecord[];
+  practiceCount?: number;
 }
 
 export interface PracticeRecord {
@@ -51,6 +61,16 @@ export interface PracticeSession {
   correctCount: number;
   wrongCount: number;
   fuzzyCount: number;
+  stats?: {
+    total: number;
+    answered: number;
+    pending: number;
+    correct: number;
+    wrong: number;
+    fuzzy: number;
+    accuracy: number;
+  };
+  questions?: any[];
 }
 
 export interface PaginatedResponse<T> {

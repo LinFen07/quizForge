@@ -20,7 +20,7 @@ export const questionsApi = {
   restore: (id: number) => request.post<any, any>(`/questions/${id}/restore`),
   permanentDelete: (id: number) => request.delete(`/questions/${id}/permanent`),
   batchDelete: (ids: number[]) => request.post<any, any>('/questions/batch/delete', { ids }),
-  batchUpdate: (data: { ids: number[]; difficulty?: number; knowledgePointId?: number; tagIds?: number[] }) =>
+  batchUpdate: (data: { ids: number[]; difficulty?: number; knowledgePointId?: number; tagIds?: number[]; companyIds?: number[] }) =>
     request.post<any, any>('/questions/batch/update', data),
   getAuditLogs: (id: number) => request.get<any, any[]>(`/questions/${id}/audit-logs`),
 };
@@ -40,9 +40,26 @@ export const tagsApi = {
   remove: (id: number) => request.delete(`/tags/${id}`),
 };
 
+export const companiesApi = {
+  list: (withCount = false) =>
+    request.get<any, any[]>('/companies', { params: { withCount } }),
+  get: (id: number) => request.get<any, any>(`/companies/${id}`),
+  create: (data: any) => request.post<any, any>('/companies', data),
+  update: (id: number, data: any) => request.patch<any, any>(`/companies/${id}`, data),
+  remove: (id: number) => request.delete(`/companies/${id}`),
+};
+
 export const practiceApi = {
-  startSession: () => request.post<any, PracticeSession>('/practice/sessions'),
-  endSession: (id: number) => request.post<any, PracticeSession>(`/practice/sessions/${id}/end`),
+  startSession: (data?: Record<string, any>) =>
+    request.post<any, PracticeSession>('/practice/sessions', data),
+  getSession: (id: number) =>
+    request.get<any, any>(`/practice/sessions/${id}`),
+  getNextQuestion: (id: number) =>
+    request.get<any, Question>(`/practice/sessions/${id}/next`),
+  endSession: (id: number) =>
+    request.post<any, PracticeSession>(`/practice/sessions/${id}/end`),
+  skipQuestion: (sessionId: number, questionId: number) =>
+    request.post<any, any>(`/practice/sessions/${sessionId}/skip/${questionId}`),
   getRandom: (params?: Record<string, any>) =>
     request.get<any, Question>('/practice/random', { params }),
   getReviewQueue: (params?: Record<string, any>) =>

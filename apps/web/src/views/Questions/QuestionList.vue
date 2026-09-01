@@ -26,6 +26,10 @@
         <option :value="0">全部难度</option>
         <option v-for="d in 5" :key="d" :value="d">{{ '★'.repeat(d) }}</option>
       </select>
+      <select v-model.number="filters.companyId" @change="fetchList">
+        <option :value="0">全部公司</option>
+        <option v-for="c in allCompanies" :key="c.id" :value="c.id">{{ c.name }}</option>
+      </select>
       <select v-model="filters.sort" @change="fetchList">
         <option value="createdAt">创建时间</option>
         <option value="updatedAt">更新时间</option>
@@ -63,6 +67,7 @@
           <div class="q-meta">
             <span v-if="q.knowledgePoint">{{ q.knowledgePoint.name }}</span>
             <span v-for="tag in q.tags" :key="tag.id" class="tag">{{ tag.name }}</span>
+            <span v-for="c in q.companies" :key="c.id" class="company">{{ c.name }}</span>
             <span class="practice-count">练习 {{ q.practiceCount }} 次</span>
           </div>
         </div>
@@ -129,6 +134,15 @@
         </div>
       </div>
       <div class="form-group">
+        <label>公司</label>
+        <div class="tag-select">
+          <label v-for="c in allCompanies" :key="c.id" class="tag-option">
+            <input type="checkbox" :value="c.id" v-model="formData.companyIds" />
+            <span class="tag-name">{{ c.name }}</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
         <label>参考解答</label>
         <textarea v-model="formData.referenceAnswer" rows="4" placeholder="Markdown 格式"></textarea>
       </div>
@@ -149,14 +163,14 @@
       <div class="form-group">
         <label>修改难度</label>
         <select v-model.number="batchData.difficulty">
-          <option :value="null">不修改</option>
+          <option :value="undefined">不修改</option>
           <option v-for="d in 5" :key="d" :value="d">{{ '★'.repeat(d) }}</option>
         </select>
       </div>
       <div class="form-group">
         <label>修改知识点</label>
         <select v-model.number="batchData.knowledgePointId">
-          <option :value="null">不修改</option>
+          <option :value="undefined">不修改</option>
           <option :value="0">移除知识点</option>
           <option v-for="kp in flatKnowledgePoints" :key="kp.id" :value="kp.id">
             {{ kp.name }}
@@ -179,14 +193,19 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { questionsApi, knowledgePointsApi, tagsApi } from '@/api';
+import { questionsApi, knowledgePointsApi, tagsApi, companiesApi } from '@/api';
 import { useQuestionStore } from '@/stores/question';
 import type { KnowledgePoint, Tag } from '@interview-quiz/shared';
 import Modal from '@/components/Modal.vue';
 
 const router = useRouter();
 const store = useQuestionStore();
-const { questions, total, loading, page, pageSize, filters } = store;
+const questions = computed(() => store.questions);
+const total = computed(() => store.total);
+const loading = computed(() => store.loading);
+const page = computed(() => store.page);
+const pageSize = computed(() => store.pageSize);
+const filters = computed(() => store.filters);
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value));
 
@@ -204,13 +223,15 @@ const isAllSelected = computed(() => {
 const showBatchUpdate = ref(false);
 const batchUpdating = ref(false);
 const batchData = reactive({
-  difficulty: null as number | null,
-  knowledgePointId: null as number | null,
+  difficulty: undefined as number | undefined,
+  knowledgePointId: undefined as number | undefined,
   tagIds: [] as number[],
+  companyIds: [] as number[],
 });
 
 const allKnowledgePoints = ref<KnowledgePoint[]>([]);
 const allTags = ref<Tag[]>([]);
+const allCompanies = ref<any[]>([]);
 
 const formData = reactive({
   title: '',
@@ -218,6 +239,7 @@ const formData = reactive({
   difficulty: 3,
   knowledgePointId: null as number | null,
   tagIds: [] as number[],
+  companyIds: [] as number[],
   referenceAnswer: '',
   source: '',
 });
@@ -240,7 +262,7 @@ let timer: ReturnType<typeof setTimeout>;
 function debouncedFetch() {
   clearTimeout(timer);
   timer = setTimeout(() => {
-    filters.keyword = keyword.value;
+    store.filters.keyword = keyword.value;
     store.fetchQuestions();
   }, 300);
 }
@@ -275,6 +297,7 @@ function openCreate() {
     difficulty: 3,
     knowledgePointId: null,
     tagIds: [],
+    companyIds: [],
     referenceAnswer: '',
     source: '',
   });
@@ -332,12 +355,14 @@ async function handleBatchUpdate() {
 
 onMounted(async () => {
   store.fetchQuestions();
-  const [kp, tag] = await Promise.all([
+  const [kp, tag, company] = await Promise.all([
     knowledgePointsApi.tree(),
     tagsApi.list(),
+    companiesApi.list(),
   ]);
   allKnowledgePoints.value = kp;
   allTags.value = tag;
+  allCompanies.value = company;
 });
 </script>
 
@@ -458,6 +483,14 @@ onMounted(async () => {
   background: #f3f4f6;
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
+}
+
+.company {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
 }
 
 .practice-count {
