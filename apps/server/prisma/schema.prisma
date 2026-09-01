@@ -1,10 +1,11 @@
 // prisma/schema.prisma
-// 面试题库平台 - 数据库设计 v3
+// 面试题库平台 - 数据库设计 v4
 // 核心改进：
 //   1. Question 不存派生数据，全部从 practice_records 实时计算
 //   2. 软删除支持（deletedAt）
 //   3. 操作审计日志（AuditLog）
-//   4. 题型/结果用 string enum 约束
+//   4. 公司关联（Company）支持多对多
+//   5. 会话-题目快照（SessionQuestion）支持继续刷题
 
 generator client {
   provider = "prisma-client-js"
@@ -49,6 +50,35 @@ model Tag {
 }
 
 // ============================================================
+// 公司：来源统计
+// ============================================================
+model Company {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  alias     String?   // JSON 别名，如 ["字节跳动", "ByteDance"]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  questions QuestionCompany[]
+
+  @@index([name])
+}
+
+// ============================================================
+// 题目-公司 关联（多对多）
+// ============================================================
+model QuestionCompany {
+  questionId Int
+  companyId  Int
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([questionId, companyId])
+  @@index([companyId])
+}
+
+// ============================================================
 // 题目：核心实体（纯题目数据，不含派生状态）
 // ============================================================
 model Question {
@@ -65,8 +95,10 @@ model Question {
 
   knowledgePoint KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
   tags            QuestionTag[]
+  companies       QuestionCompany[]
   practiceRecords PracticeRecord[]
   spacedReps      SpacedReputation?
+  sessionQuestions SessionQuestion[]
 
   @@index([knowledgePointId])
   @@index([type])
@@ -101,9 +133,29 @@ model PracticeSession {
   wrongCount     Int    @default(0)
   fuzzyCount     Int    @default(0)
 
-  records PracticeRecord[]
+  records  PracticeRecord[]
+  questions SessionQuestion[]
 
   @@index([startedAt])
+}
+
+// ============================================================
+// 会话-题目快照：记录本次出题
+// ============================================================
+model SessionQuestion {
+  sessionId    Int
+  questionId   Int
+  orderIndex   Int      @default(0)
+  status       String   @default("pending")  // pending | answered | skipped
+  result       String?  // correct | wrong | fuzzy（答题后填入）
+  createdAt    DateTime @default(now())
+
+  session  PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, questionId])
+  @@index([questionId])
+  @@index([status])
 }
 
 // ============================================================

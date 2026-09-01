@@ -18,6 +18,7 @@ export class QuestionsService {
       keyword,
       knowledgePointId,
       tagIds,
+      companyIds,
       difficulty,
       type,
       page = 1,
@@ -50,6 +51,9 @@ export class QuestionsService {
     if (tagIds?.length) {
       where.tags = { some: { tagId: { in: tagIds } } };
     }
+    if (companyIds?.length) {
+      where.companies = { some: { companyId: { in: companyIds } } };
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.question.findMany({
@@ -57,6 +61,7 @@ export class QuestionsService {
         include: {
           knowledgePoint: { select: { id: true, name: true } },
           tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+          companies: { include: { company: { select: { id: true, name: true } } } },
           _count: { select: { practiceRecords: true } },
         },
         orderBy: { [sort]: order },
@@ -70,6 +75,7 @@ export class QuestionsService {
       items: items.map((q) => ({
         ...q,
         tags: q.tags.map((qt) => qt.tag),
+        companies: q.companies.map((qc) => qc.company),
         practiceCount: q._count.practiceRecords,
       })),
       total,
@@ -90,6 +96,7 @@ export class QuestionsService {
       include: {
         knowledgePoint: true,
         tags: { include: { tag: true } },
+        companies: { include: { company: true } },
         practiceRecords: {
           orderBy: { practicedAt: 'desc' },
           take: 10,
@@ -101,11 +108,12 @@ export class QuestionsService {
     return {
       ...question,
       tags: question.tags.map((qt) => qt.tag),
+      companies: question.companies.map((qc) => qc.company),
     };
   }
 
   async create(dto: CreateQuestionDto) {
-    const { tagIds, ...data } = dto;
+    const { tagIds, companyIds, ...data } = dto;
 
     const question = await this.prisma.question.create({
       data: {
@@ -114,26 +122,33 @@ export class QuestionsService {
         tags: tagIds?.length
           ? { create: tagIds.map((tagId) => ({ tagId })) }
           : undefined,
+        companies: companyIds?.length
+          ? { create: companyIds.map((companyId) => ({ companyId })) }
+          : undefined,
       },
       include: {
         knowledgePoint: { select: { id: true, name: true } },
         tags: { include: { tag: true } },
+        companies: { include: { company: true } },
       },
     });
 
-    // 审计日志
     await this.audit.log({
       entity: 'question',
       entityId: question.id,
       action: 'create',
     });
 
-    return question;
+    return {
+      ...question,
+      tags: question.tags.map((qt) => qt.tag),
+      companies: question.companies.map((qc) => qc.company),
+    };
   }
 
   async update(id: number, dto: UpdateQuestionDto) {
     const old = await this.findOne(id);
-    const { tagIds, ...data } = dto;
+    const { tagIds, companyIds, ...data } = dto;
 
     const question = await this.prisma.$transaction(async (tx) => {
       // 更新标签
@@ -146,12 +161,23 @@ export class QuestionsService {
         }
       }
 
+      // 更新公司
+      if (companyIds !== undefined) {
+        await tx.questionCompany.deleteMany({ where: { questionId: id } });
+        if (companyIds.length) {
+          await tx.questionCompany.createMany({
+            data: companyIds.map((companyId) => ({ questionId: id, companyId })),
+          });
+        }
+      }
+
       return tx.question.update({
         where: { id },
         data,
         include: {
           knowledgePoint: { select: { id: true, name: true } },
           tags: { include: { tag: true } },
+          companies: { include: { company: true } },
         },
       });
     });
@@ -170,6 +196,12 @@ export class QuestionsService {
         new: tagIds,
       };
     }
+    if (companyIds !== undefined) {
+      changes.companies = {
+        old: old.companies.map((c: any) => c.id),
+        new: companyIds,
+      };
+    }
 
     await this.audit.log({
       entity: 'question',
@@ -181,6 +213,7 @@ export class QuestionsService {
     return {
       ...question,
       tags: question.tags.map((qt: any) => qt.tag),
+      companies: question.companies.map((qc: any) => qc.company),
     };
   }
 
@@ -294,6 +327,18 @@ export class QuestionsService {
         if (data.tagIds.length) {
           await this.prisma.questionTag.createMany({
             data: data.tagIds.map((tagId) => ({ questionId: id, tagId })),
+          });
+        }
+      }
+    }
+
+    // 更新公司（需要逐个处理）
+    if (data.companyIds !== undefined) {
+      for (const id of ids) {
+        await this.prisma.questionCompany.deleteMany({ where: { questionId: id } });
+        if (data.companyIds.length) {
+          await this.prisma.questionCompany.createMany({
+            data: data.companyIds.map((companyId) => ({ questionId: id, companyId })),
           });
         }
       }

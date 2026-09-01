@@ -69,4 +69,11 @@ export class QuestionQueryDto {
   @IsOptional()
   @Type(() => Boolean)
   includeDeleted?: boolean;
+
+  @ApiPropertyOptional({ type: [Number], description: '公司 ID 列表（AND 逻辑）' })
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  @IsNumber({}, { each: true })
+  companyIds?: number[];
 }

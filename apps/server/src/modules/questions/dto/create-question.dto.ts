@@ -41,4 +41,11 @@ export class CreateQuestionDto {
   @IsNumber({}, { each: true, message: '标签 ID 必须是数字' })
   @ArrayMaxSize(20, { message: '最多关联 20 个标签' })
   tagIds?: number[];
+
+  @ApiPropertyOptional({ type: [Number], description: '关联公司 ID 列表' })
+  @IsOptional()
+  @IsArray({ message: '公司必须是数组' })
+  @IsNumber({}, { each: true, message: '公司 ID 必须是数字' })
+  @ArrayMaxSize(20, { message: '最多关联 20 个公司' })
+  companyIds?: number[];
 }

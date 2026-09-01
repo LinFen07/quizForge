@@ -35,4 +35,10 @@ export class BatchUpdateDto {
   @IsArray()
   @IsNumber({}, { each: true })
   tagIds?: number[];
+
+  @ApiPropertyOptional({ type: [Number], description: '替换公司列表（全量替换）' })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  companyIds?: number[];
 }
