@@ -151,7 +151,7 @@ model SessionQuestion {
   createdAt    DateTime @default(now())
 
   session  PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Restrict)
 
   @@id([sessionId, questionId])
   @@index([questionId])
@@ -170,7 +170,7 @@ model PracticeRecord {
   durationMs  Int?     // 作答耗时（毫秒），用于统计
   practicedAt DateTime @default(now())
 
-  question Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question         @relation(fields: [questionId], references: [id], onDelete: Restrict)
   session  PracticeSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
   @@index([questionId])
@@ -193,7 +193,7 @@ model SpacedReputation {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
 }
 
 // ============================================================

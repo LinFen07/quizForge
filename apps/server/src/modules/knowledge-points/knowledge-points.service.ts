@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateKnowledgePointDto } from './dto/create-knowledge-point.dto';
 import { UpdateKnowledgePointDto } from './dto/update-knowledge-point.dto';
@@ -50,7 +50,7 @@ export class KnowledgePointsService {
       where: { parentId: id },
     });
     if (children > 0) {
-      throw new Error('Cannot delete: has children. Delete children first.');
+      throw new BadRequestException('无法删除：存在子知识点，请先删除子知识点');
     }
     return this.prisma.knowledgePoint.delete({ where: { id } });
   }

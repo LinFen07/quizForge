@@ -99,6 +99,8 @@ export class PracticeService {
     if (!session) throw new NotFoundException(`Session #${sessionId} not found`);
 
     const answered = session.questions.filter((sq) => sq.status === 'answered');
+    const skipped = session.questions.filter((sq) => sq.status === 'skipped');
+    const pending = session.questions.filter((sq) => sq.status === 'pending');
     const correct = answered.filter((sq) => sq.result === 'correct').length;
     const wrong = answered.filter((sq) => sq.result === 'wrong').length;
     const fuzzy = answered.filter((sq) => sq.result === 'fuzzy').length;
@@ -108,7 +110,8 @@ export class PracticeService {
       stats: {
         total: session.questions.length,
         answered: answered.length,
-        pending: session.questions.length - answered.length,
+        skipped: skipped.length,
+        pending: pending.length,
         correct,
         wrong,
         fuzzy,
