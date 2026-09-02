@@ -6,22 +6,24 @@ export class ImportExportService {
   constructor(private prisma: PrismaService) {}
 
   async exportAll() {
-    const [questions, knowledgePoints, tags, practiceRecords] = await Promise.all([
+    const [questions, knowledgePoints, tags, companies, practiceRecords] = await Promise.all([
       this.prisma.question.findMany({
         include: {
           knowledgePoint: { select: { id: true, name: true } },
           tags: { include: { tag: true } },
+          companies: { include: { company: true } },
         },
       }),
       this.prisma.knowledgePoint.findMany(),
       this.prisma.tag.findMany(),
+      this.prisma.company.findMany(),
       this.prisma.practiceRecord.findMany(),
     ]);
 
     return {
       version: '1.0',
       exportedAt: new Date().toISOString(),
-      data: { questions, knowledgePoints, tags, practiceRecords },
+      data: { questions, knowledgePoints, tags, companies, practiceRecords },
     };
   }
 
@@ -35,12 +37,15 @@ export class ImportExportService {
 
     for (const item of data) {
       try {
-        const { tagIds, ...questionData } = item;
+        const { tagIds, companyIds, ...questionData } = item;
         await this.prisma.question.create({
           data: {
             ...questionData,
             tags: tagIds?.length
               ? { create: tagIds.map((tagId: number) => ({ tagId })) }
+              : undefined,
+            companies: companyIds?.length
+              ? { create: companyIds.map((companyId: number) => ({ companyId })) }
               : undefined,
           },
         });

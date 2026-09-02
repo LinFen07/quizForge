@@ -125,12 +125,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { usePracticeStore } from '@/stores/practice';
 import type { PracticeResult } from '@interview-quiz/shared';
 import Modal from '@/components/Modal.vue';
 
 const store = usePracticeStore();
-const { currentQuestion, loading, showAnswer, toggleAnswer, session, sessionStats } = store;
+const { currentQuestion, loading, showAnswer, toggleAnswer, session, sessionStats } = storeToRefs(store);
 
 const myAnswer = ref('');
 const startTime = ref(Date.now());
@@ -207,7 +208,7 @@ async function submit(result: PracticeResult) {
 }
 
 onMounted(() => {
-  if (session) {
+  if (session.value) {
     startTimer();
   }
 });

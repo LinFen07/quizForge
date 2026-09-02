@@ -26,7 +26,7 @@
         <option :value="0">全部难度</option>
         <option v-for="d in 5" :key="d" :value="d">{{ '★'.repeat(d) }}</option>
       </select>
-      <select v-model.number="filters.companyId" @change="fetchList">
+      <select v-model.number="filters.companyIds" @change="fetchList">
         <option :value="0">全部公司</option>
         <option v-for="c in allCompanies" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>

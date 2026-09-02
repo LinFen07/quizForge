@@ -312,37 +312,39 @@ export class QuestionsService {
     if (data.difficulty !== undefined) updateData.difficulty = data.difficulty;
     if (data.knowledgePointId !== undefined) updateData.knowledgePointId = data.knowledgePointId;
 
-    // 更新题目字段
-    if (Object.keys(updateData).length > 0) {
-      await this.prisma.question.updateMany({
-        where: { id: { in: ids } },
-        data: updateData,
-      });
-    }
+    await this.prisma.$transaction(async (tx) => {
+      // 更新题目字段
+      if (Object.keys(updateData).length > 0) {
+        await tx.question.updateMany({
+          where: { id: { in: ids } },
+          data: updateData,
+        });
+      }
 
-    // 更新标签（需要逐个处理）
-    if (data.tagIds !== undefined) {
-      for (const id of ids) {
-        await this.prisma.questionTag.deleteMany({ where: { questionId: id } });
-        if (data.tagIds.length) {
-          await this.prisma.questionTag.createMany({
-            data: data.tagIds.map((tagId) => ({ questionId: id, tagId })),
-          });
+      // 更新标签（需要逐个处理）
+      if (data.tagIds !== undefined) {
+        for (const id of ids) {
+          await tx.questionTag.deleteMany({ where: { questionId: id } });
+          if (data.tagIds.length) {
+            await tx.questionTag.createMany({
+              data: data.tagIds.map((tagId) => ({ questionId: id, tagId })),
+            });
+          }
         }
       }
-    }
 
-    // 更新公司（需要逐个处理）
-    if (data.companyIds !== undefined) {
-      for (const id of ids) {
-        await this.prisma.questionCompany.deleteMany({ where: { questionId: id } });
-        if (data.companyIds.length) {
-          await this.prisma.questionCompany.createMany({
-            data: data.companyIds.map((companyId) => ({ questionId: id, companyId })),
-          });
+      // 更新公司（需要逐个处理）
+      if (data.companyIds !== undefined) {
+        for (const id of ids) {
+          await tx.questionCompany.deleteMany({ where: { questionId: id } });
+          if (data.companyIds.length) {
+            await tx.questionCompany.createMany({
+              data: data.companyIds.map((companyId) => ({ questionId: id, companyId })),
+            });
+          }
         }
       }
-    }
+    });
 
     // 审计日志
     await this.audit.logBatch({
