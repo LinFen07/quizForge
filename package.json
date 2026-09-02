@@ -1,12 +1,30 @@
 {
   "name": "interview-quiz",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "pnpm --filter @interview-quiz/server dev",
     "dev:web": "pnpm --filter @interview-quiz/web dev",
     "build": "pnpm --filter @interview-quiz/shared build && pnpm --filter @interview-quiz/server build && pnpm --filter @interview-quiz/web build",
     "start": "pnpm --filter @interview-quiz/server start:prod",
     "db:migrate": "pnpm --filter @interview-quiz/server db:migrate",
-    "db:seed": "pnpm --filter @interview-quiz/server db:seed"
+    "db:seed": "pnpm --filter @interview-quiz/server db:seed",
+    "lint": "eslint --fix",
+    "format": "prettier --write \"**/*.{vue,ts,tsx,js,json,css,md}\"",
+    "type-check": "vue-tsc --noEmit",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@typescript-eslint/parser": "^8.69.0",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-vue": "^10.10.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.4.1",
+    "prettier": "^3.9.6",
+    "typescript-eslint": "^8.69.0"
   }
 }
