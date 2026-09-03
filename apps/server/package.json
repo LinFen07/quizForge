@@ -1,5 +1,5 @@
 {
-  "name": "@interview-quiz/server",
+  "name": "@quiz-forge/server",
   "version": "0.1.0",
   "private": true,
   "scripts": {
