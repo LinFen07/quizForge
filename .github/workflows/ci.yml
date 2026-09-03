@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, main, develop]
   pull_request:
-    branches: [main]
+    branches: [master, main]
 
 jobs:
   quality:
@@ -55,10 +55,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build shared
-        run: pnpm --filter @interview-quiz/shared build
+        run: pnpm --filter @quiz-forge/shared build
 
       - name: Build web
-        run: pnpm --filter @interview-quiz/web build
+        run: pnpm --filter @quiz-forge/web build
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
@@ -90,7 +90,7 @@ jobs:
     name: Deploy Production
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     environment:
       name: production
     steps:
