@@ -1,123 +1,364 @@
 <template>
   <div class="practice-page">
     <div class="page-header">
-      <h1 class="page-title">刷题模式</h1>
+      <h1 class="page-title">
+        刷题模式
+      </h1>
       <div class="header-actions">
         <template v-if="!session">
-          <button class="primary" @click="showStartDialog = true">开始刷题</button>
+          <button
+            class="primary"
+            @click="showStartDialog = true"
+          >
+            开始刷题
+          </button>
         </template>
         <template v-else>
           <div class="session-progress">
             <span class="progress-text">{{ sessionStats?.answered || 0 }} / {{ sessionStats?.total || 0 }}</span>
             <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+              <div
+                class="progress-fill"
+                :style="{ width: progressPercent + '%' }"
+              />
             </div>
           </div>
           <div class="session-stats">
-            <span class="correct">✓ {{ sessionStats?.correct || 0 }}</span>
-            <span class="wrong">✗ {{ sessionStats?.wrong || 0 }}</span>
-            <span class="fuzzy">? {{ sessionStats?.fuzzy || 0 }}</span>
+            <span class="stat correct">{{ sessionStats?.correct || 0 }}</span>
+            <span class="stat wrong">{{ sessionStats?.wrong || 0 }}</span>
+            <span class="stat fuzzy">{{ sessionStats?.fuzzy || 0 }}</span>
           </div>
-          <button v-if="currentQuestion" class="secondary" @click="handleSkip">跳过</button>
-          <button class="danger" @click="endSession">结束</button>
+          <button
+            v-if="currentQuestion"
+            class="secondary"
+            @click="handleSkip"
+          >
+            跳过
+          </button>
+          <button
+            class="danger"
+            @click="endSession"
+          >
+            结束
+          </button>
         </template>
       </div>
     </div>
 
-    <div v-if="loading" class="loading">加载中...</div>
+    <div
+      v-if="loading"
+      class="loading"
+    >
+      加载中...
+    </div>
 
-    <div v-else-if="currentQuestion" class="card question-card">
-      <div class="q-info">
-        <span v-if="currentQuestion.knowledgePoint" class="kp">{{ currentQuestion.knowledgePoint.name }}</span>
-        <span class="diff">{{ '★'.repeat(currentQuestion.difficulty) }}</span>
-        <span class="q-type">{{ currentQuestion.type }}</span>
-        <span v-for="tag in currentQuestion.tags" :key="tag.id" class="tag">{{ tag.name }}</span>
-        <span class="timer">{{ formatTime(elapsedTime) }}</span>
-      </div>
+    <div
+      v-else-if="currentQuestion"
+      class="question-container"
+    >
+      <div class="question-card">
+        <div class="q-meta">
+          <span
+            v-if="currentQuestion.knowledgePoint"
+            class="meta-item kp"
+          >
+            {{ currentQuestion.knowledgePoint.name }}
+          </span>
+          <span class="meta-item type">{{
+            typeLabels[currentQuestion.type] || currentQuestion.type
+          }}</span>
+          <span class="meta-item diff">{{ '★'.repeat(currentQuestion.difficulty) }}</span>
+          <span
+            v-for="tag in currentQuestion.tags"
+            :key="tag.id"
+            class="meta-item tag"
+          >
+            {{ tag.name }}
+          </span>
+          <span class="timer">{{ formatTime(elapsedTime) }}</span>
+        </div>
 
-      <div class="q-title">{{ currentQuestion.title }}</div>
+        <h2 class="q-title">
+          {{ currentQuestion.title }}
+        </h2>
 
-      <div class="answer-area">
-        <button v-if="!showAnswer" class="secondary" @click="toggleAnswer">显示答案</button>
-        <div v-if="showAnswer" class="reference-answer">
-          <h4>参考解答</h4>
-          <div class="answer-content">{{ currentQuestion.referenceAnswer || '暂无' }}</div>
+        <div
+          v-if="currentQuestion.source"
+          class="q-source"
+        >
+          来源: {{ currentQuestion.source }}
         </div>
       </div>
 
-      <div class="my-answer">
-        <textarea v-model="myAnswer" placeholder="我的解答（可选）..." rows="4"></textarea>
-      </div>
+      <div class="action-card">
+        <div class="answer-section">
+          <button
+            v-if="!showAnswer"
+            class="secondary full-width"
+            @click="store.toggleAnswer"
+          >
+            显示答案
+          </button>
+          <div
+            v-if="showAnswer"
+            class="reference-answer"
+          >
+            <div class="answer-label">
+              参考解答
+            </div>
+            <MarkdownRenderer
+              v-if="currentQuestion.referenceAnswer"
+              :content="currentQuestion.referenceAnswer"
+            />
+            <div
+              v-else
+              class="no-answer"
+            >
+              暂无参考解答
+            </div>
+          </div>
+        </div>
 
-      <div class="actions">
-        <button class="correct" @click="submit('correct')">答对了</button>
-        <button class="fuzzy" @click="submit('fuzzy')">模糊</button>
-        <button class="wrong" @click="submit('wrong')">答错了</button>
+        <div class="my-answer-section">
+          <textarea
+            v-model="myAnswer"
+            placeholder="写下你的解答思路（可选）..."
+            rows="4"
+          />
+        </div>
+
+        <div class="submit-actions">
+          <button
+            class="result-btn correct"
+            @click="submit('correct')"
+          >
+            <span class="result-icon">✓</span>
+            <span>答对了</span>
+          </button>
+          <button
+            class="result-btn fuzzy"
+            @click="submit('fuzzy')"
+          >
+            <span class="result-icon">~</span>
+            <span>有点模糊</span>
+          </button>
+          <button
+            class="result-btn wrong"
+            @click="submit('wrong')"
+          >
+            <span class="result-icon">✗</span>
+            <span>答错了</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <div v-else class="empty">
-      <p v-if="!session">点击「开始刷题」开始练习</p>
-      <p v-else-if="sessionStats?.pending === 0">🎉 本次刷题完成！</p>
-      <p v-else>没有更多题目了</p>
+    <div
+      v-else
+      class="empty-state"
+    >
+      <div
+        v-if="!session"
+        class="empty-content"
+      >
+        <div class="empty-icon">
+          📝
+        </div>
+        <h3>准备开始刷题</h3>
+        <p>点击「开始刷题」选择筛选条件</p>
+        <button
+          class="primary"
+          @click="showStartDialog = true"
+        >
+          开始刷题
+        </button>
+      </div>
+      <div
+        v-else-if="sessionStats?.pending === 0"
+        class="empty-content"
+      >
+        <div class="empty-icon">
+          🎉
+        </div>
+        <h3>本次刷题完成！</h3>
+        <p>正确率: {{ sessionStats?.accuracy || 0 }}%</p>
+        <button
+          class="secondary"
+          @click="showStartDialog = true"
+        >
+          再来一轮
+        </button>
+      </div>
+      <div
+        v-else
+        class="empty-content"
+      >
+        <p>没有更多题目了</p>
+      </div>
     </div>
 
-    <div v-if="session && sessionStats" class="card session-summary">
-      <h3>本次统计</h3>
-      <div class="summary-grid">
-        <div class="summary-item">
-          <div class="value">{{ sessionStats.total }}</div>
-          <div class="label">总题数</div>
+    <div
+      v-if="session && sessionStats && sessionStats.total > 0"
+      class="stats-card"
+    >
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value">
+            {{ sessionStats.total }}
+          </div>
+          <div class="stat-label">
+            总题数
+          </div>
         </div>
-        <div class="summary-item">
-          <div class="value">{{ sessionStats.pending }}</div>
-          <div class="label">待答</div>
+        <div class="stat-item">
+          <div class="stat-value">
+            {{ sessionStats.pending }}
+          </div>
+          <div class="stat-label">
+            待答
+          </div>
         </div>
-        <div class="summary-item correct">
-          <div class="value">{{ sessionStats.correct }}</div>
-          <div class="label">答对</div>
+        <div class="stat-item correct">
+          <div class="stat-value">
+            {{ sessionStats.correct }}
+          </div>
+          <div class="stat-label">
+            正确
+          </div>
         </div>
-        <div class="summary-item wrong">
-          <div class="value">{{ sessionStats.wrong }}</div>
-          <div class="label">答错</div>
+        <div class="stat-item wrong">
+          <div class="stat-value">
+            {{ sessionStats.wrong }}
+          </div>
+          <div class="stat-label">
+            错误
+          </div>
         </div>
-        <div class="summary-item fuzzy">
-          <div class="value">{{ sessionStats.fuzzy }}</div>
-          <div class="label">模糊</div>
+        <div class="stat-item fuzzy">
+          <div class="stat-value">
+            {{ sessionStats.fuzzy }}
+          </div>
+          <div class="stat-label">
+            模糊
+          </div>
         </div>
-        <div class="summary-item">
-          <div class="value">{{ sessionStats.accuracy }}%</div>
-          <div class="label">正确率</div>
+        <div class="stat-item">
+          <div class="stat-value">
+            {{ sessionStats.accuracy }}%
+          </div>
+          <div class="stat-label">
+            正确率
+          </div>
         </div>
       </div>
     </div>
 
-    <Modal :visible="showStartDialog" title="开始刷题" @close="showStartDialog = false" @confirm="handleStartSession">
+    <Modal
+      :visible="showStartDialog"
+      title="开始刷题"
+      @close="showStartDialog = false"
+      @confirm="handleStartSession"
+    >
       <div class="form-group">
         <label>出题数量</label>
         <select v-model.number="startParams.count">
-          <option :value="5">5 题</option>
-          <option :value="10">10 题</option>
-          <option :value="20">20 题</option>
-          <option :value="50">50 题</option>
+          <option :value="5">
+            5 题
+          </option>
+          <option :value="10">
+            10 题
+          </option>
+          <option :value="20">
+            20 题
+          </option>
+          <option :value="50">
+            50 题
+          </option>
         </select>
       </div>
       <div class="form-group">
         <label>题型筛选</label>
         <select v-model="startParams.type">
-          <option value="">全部题型</option>
-          <option value="concept">概念题</option>
-          <option value="coding">手写题</option>
-          <option value="scene">场景题</option>
-          <option value="algorithm">算法题</option>
+          <option value="">
+            全部题型
+          </option>
+          <option value="concept">
+            概念题
+          </option>
+          <option value="coding">
+            手写题
+          </option>
+          <option value="scene">
+            场景题
+          </option>
+          <option value="algorithm">
+            算法题
+          </option>
         </select>
       </div>
       <div class="form-group">
         <label>难度筛选</label>
         <select v-model.number="startParams.difficulty">
-          <option :value="0">全部难度</option>
-          <option v-for="d in 5" :key="d" :value="d">{{ '★'.repeat(d) }}</option>
+          <option :value="0">
+            全部难度
+          </option>
+          <option
+            v-for="d in 5"
+            :key="d"
+            :value="d"
+          >
+            {{ '★'.repeat(d) }}
+          </option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>知识点筛选</label>
+        <select v-model.number="startParams.knowledgePointId">
+          <option :value="0">
+            全部知识点
+          </option>
+          <option
+            v-for="kp in filterStore.flatKnowledgePoints"
+            :key="kp.id"
+            :value="kp.id"
+          >
+            {{ kp.name }}
+          </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>标签筛选</label>
+        <div class="tag-select">
+          <label
+            v-for="tag in filterStore.tags"
+            :key="tag.id"
+            class="tag-option"
+          >
+            <input
+              v-model="startParams.tagIds"
+              type="checkbox"
+              :value="tag.id"
+            >
+            <span class="tag-name">{{ tag.name }}</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>公司筛选</label>
+        <div class="tag-select">
+          <label
+            v-for="c in filterStore.companies"
+            :key="c.id"
+            class="tag-option"
+          >
+            <input
+              v-model="startParams.companyIds"
+              type="checkbox"
+              :value="c.id"
+            >
+            <span class="tag-name">{{ c.name }}</span>
+          </label>
+        </div>
       </div>
     </Modal>
   </div>
@@ -127,11 +368,21 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePracticeStore } from '@/stores/practice';
+import { useFilterStore } from '@/stores/filter';
 import type { PracticeResult } from '@interview-quiz/shared';
 import Modal from '@/components/Modal.vue';
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 
 const store = usePracticeStore();
-const { currentQuestion, loading, showAnswer, toggleAnswer, session, sessionStats } = storeToRefs(store);
+const filterStore = useFilterStore();
+const { currentQuestion, loading, showAnswer, session, sessionStats } = storeToRefs(store);
+
+const typeLabels: Record<string, string> = {
+  concept: '概念题',
+  coding: '手写题',
+  scene: '场景题',
+  algorithm: '算法题',
+};
 
 const myAnswer = ref('');
 const startTime = ref(Date.now());
@@ -143,11 +394,16 @@ const startParams = reactive({
   count: 10,
   type: '',
   difficulty: 0,
+  knowledgePointId: 0,
+  tagIds: [] as number[],
+  companyIds: [] as number[],
 });
 
 const progressPercent = computed(() => {
   if (!sessionStats.value || !sessionStats.value.total) return 0;
-  return Math.round(((sessionStats.value.total - sessionStats.value.pending) / sessionStats.value.total) * 100);
+  return Math.round(
+    ((sessionStats.value.total - sessionStats.value.pending) / sessionStats.value.total) * 100,
+  );
 });
 
 function formatTime(ms: number) {
@@ -180,6 +436,9 @@ async function handleStartSession() {
   if (startParams.count) params.count = startParams.count;
   if (startParams.type) params.type = startParams.type;
   if (startParams.difficulty) params.difficulty = startParams.difficulty;
+  if (startParams.knowledgePointId) params.knowledgePointId = startParams.knowledgePointId;
+  if (startParams.tagIds.length) params.tagIds = startParams.tagIds;
+  if (startParams.companyIds.length) params.companyIds = startParams.companyIds;
   await store.startSession(Object.keys(params).length > 0 ? params : undefined);
   startTimer();
 }
@@ -207,7 +466,8 @@ async function submit(result: PracticeResult) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await filterStore.fetchAll();
   if (session.value) {
     startTimer();
   }
@@ -219,212 +479,352 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.practice-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .session-progress {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .progress-text {
-  font-size: 0.875rem;
+  font-size: 13px;
   font-weight: 500;
+  color: #787774;
   white-space: nowrap;
 }
 
 .progress-bar {
   width: 120px;
-  height: 6px;
-  background: #e5e7eb;
-  border-radius: 3px;
+  height: 4px;
+  background: #e9e9e7;
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #3b82f6;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  background: #2383e2;
+  border-radius: 2px;
+  transition: width 300ms ease;
 }
 
 .session-stats {
   display: flex;
-  gap: 0.75rem;
-  font-size: 0.875rem;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.session-stats .correct { color: #22c55e; }
-.session-stats .wrong { color: #ef4444; }
-.session-stats .fuzzy { color: #f59e0b; }
+.stat {
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.stat.correct {
+  color: #0f7b6c;
+  background: #e6f5f0;
+}
+
+.stat.wrong {
+  color: #eb5757;
+  background: #fde8e8;
+}
+
+.stat.fuzzy {
+  color: #d9730d;
+  background: #fef3e0;
+}
 
 .danger {
-  background: #dc2626;
-  color: #fff;
+  background: #eb5757;
+  color: #ffffff;
 }
 
 .danger:hover {
-  background: #b91c1c;
+  background: #dc3545;
+}
+
+.question-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .question-card {
-  max-width: 700px;
+  padding: 24px;
 }
 
-.q-info {
+.q-meta {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
-.kp {
-  background: #dbeafe;
-  color: #1e40af;
-  padding: 0.125rem 0.5rem;
+.meta-item {
+  font-size: 12px;
+  padding: 4px 10px;
   border-radius: 4px;
-  font-size: 0.75rem;
+  background: #f7f6f3;
+  color: #787774;
 }
 
-.diff {
-  color: #f59e0b;
+.meta-item.kp {
+  background: #e8f4f8;
+  color: #0f7b6c;
 }
 
-.q-type {
-  background: #e0e7ff;
-  color: #3730a3;
-  padding: 0.125rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+.meta-item.type {
+  background: #f0f0ff;
+  color: #5849d4;
 }
 
-.tag {
-  background: #f3f4f6;
-  padding: 0.125rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
+.meta-item.diff {
+  color: #d9730d;
+  background: #fef3e0;
+}
+
+.meta-item.tag {
+  background: #f7f6f3;
 }
 
 .timer {
   margin-left: auto;
-  font-family: monospace;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #374151;
-  background: #f3f4f6;
-  padding: 0.25rem 0.75rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: #787774;
+  background: #f7f6f3;
+  padding: 4px 12px;
   border-radius: 4px;
 }
 
 .q-title {
-  font-size: 1.125rem;
-  margin-bottom: 1.5rem;
+  font-family: 'Source Serif Pro', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #37352f;
   line-height: 1.6;
+  margin: 0;
 }
 
-.answer-area {
-  margin-bottom: 1rem;
+.q-source {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #787774;
+}
+
+.action-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.answer-section {
+  min-height: 40px;
+}
+
+.full-width {
+  width: 100%;
 }
 
 .reference-answer {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  padding: 1rem;
+  background: #f7f6f3;
+  border: 1px solid #e9e9e7;
+  border-radius: 4px;
+  padding: 16px;
 }
 
-.reference-answer h4 {
-  margin-bottom: 0.5rem;
-  color: #166534;
+.answer-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #787774;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
 }
 
-.answer-content {
-  white-space: pre-wrap;
-  line-height: 1.6;
+.no-answer {
+  color: #787774;
+  font-style: italic;
 }
 
-.my-answer textarea {
+.my-answer-section textarea {
   width: 100%;
-  margin-bottom: 1rem;
+  min-height: 100px;
+  resize: vertical;
 }
 
-.actions {
+.submit-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
-.correct {
-  background: #22c55e;
-  color: #fff;
-  padding: 0.75rem 1.5rem;
+.result-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-weight: 500;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
 }
 
-.fuzzy {
-  background: #f59e0b;
-  color: #fff;
-  padding: 0.75rem 1.5rem;
+.result-btn:hover {
+  transform: translateY(-1px);
 }
 
-.wrong {
-  background: #ef4444;
-  color: #fff;
-  padding: 0.75rem 1.5rem;
+.result-btn:active {
+  transform: translateY(0);
 }
 
-.loading, .empty {
+.result-btn.correct {
+  background: #0f7b6c;
+  color: #ffffff;
+}
+
+.result-btn.correct:hover {
+  background: #0d6958;
+}
+
+.result-btn.fuzzy {
+  background: #d9730d;
+  color: #ffffff;
+}
+
+.result-btn.fuzzy:hover {
+  background: #b85c0a;
+}
+
+.result-btn.wrong {
+  background: #eb5757;
+  color: #ffffff;
+}
+
+.result-btn.wrong:hover {
+  background: #d63b3b;
+}
+
+.result-icon {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.loading {
   text-align: center;
-  padding: 3rem;
-  color: #6b7280;
+  padding: 64px;
+  color: #787774;
 }
 
-.session-summary {
-  margin-top: 1.5rem;
-  max-width: 700px;
+.empty-state {
+  padding: 80px 0;
 }
 
-.session-summary h3 {
-  margin-bottom: 1rem;
+.empty-content {
+  text-align: center;
 }
 
-.summary-grid {
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-content h3 {
+  font-family: 'Source Serif Pro', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #37352f;
+  margin: 0 0 8px 0;
+}
+
+.empty-content p {
+  color: #787774;
+  margin: 0 0 24px 0;
+}
+
+.stats-card {
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
 }
 
-.summary-item {
+.stat-item {
   text-align: center;
 }
 
-.summary-item .value {
-  font-size: 1.5rem;
-  font-weight: bold;
+.stat-item .stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #37352f;
 }
 
-.summary-item.correct .value { color: #22c55e; }
-.summary-item.wrong .value { color: #ef4444; }
-.summary-item.fuzzy .value { color: #f59e0b; }
+.stat-item.correct .stat-value {
+  color: #0f7b6c;
+}
+.stat-item.wrong .stat-value {
+  color: #eb5757;
+}
+.stat-item.fuzzy .stat-value {
+  color: #d9730d;
+}
 
-.summary-item .label {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-top: 0.25rem;
+.stat-item .stat-label {
+  font-size: 12px;
+  color: #787774;
+  margin-top: 4px;
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 12px;
   font-weight: 500;
-  margin-bottom: 0.5rem;
-  color: #374151;
+  margin-bottom: 6px;
+  color: #787774;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tag-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #37352f;
+}
+
+.tag-option input {
+  width: auto;
 }
 </style>
