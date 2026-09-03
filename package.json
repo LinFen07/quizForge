@@ -11,7 +11,7 @@
     "db:seed": "pnpm --filter @quiz-forge/server db:seed",
     "lint": "eslint --fix",
     "format": "prettier --write \"**/*.{vue,ts,tsx,js,json,css,md}\"",
-    "type-check": "vue-tsc --noEmit",
+    "type-check": "pnpm --filter @quiz-forge/web type-check",
     "prepare": "husky"
   },
   "devDependencies": {
