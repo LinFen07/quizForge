@@ -18,6 +18,8 @@ export default [
         console: 'readonly',
         URL: 'readonly',
         Blob: 'readonly',
+        alert: 'readonly',
+        confirm: 'readonly',
         HTMLInputElement: 'readonly',
         HTMLSelectElement: 'readonly',
         HTMLTextAreaElement: 'readonly',
