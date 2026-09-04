@@ -9,6 +9,7 @@ import { CompaniesModule } from './modules/companies/companies.module';
 import { PracticeModule } from './modules/practice/practice.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
+import { HealthController } from './common/controllers/health.controller';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 
 @Module({
@@ -27,6 +28,7 @@ import { LoggerMiddleware } from './common/middlewares/logger.middleware';
     StatsModule,
     ImportExportModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

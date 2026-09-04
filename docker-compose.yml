@@ -6,10 +6,16 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./apps/server/prisma:/app/apps/server/prisma
       - db-data:/app/apps/server/prisma
     environment:
       - DATABASE_URL=file:./dev.db
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   web:
@@ -19,7 +25,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
