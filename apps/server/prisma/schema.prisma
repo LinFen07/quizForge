@@ -1,0 +1,214 @@
+// prisma/schema.prisma
+// 面试题库平台 - 数据库设计 v4
+// 核心改进：
+//   1. Question 不存派生数据，全部从 practice_records 实时计算
+//   2. 软删除支持（deletedAt）
+//   3. 操作审计日志（AuditLog）
+//   4. 公司关联（Company）支持多对多
+//   5. 会话-题目快照（SessionQuestion）支持继续刷题
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// 知识点：树形分类
+// ============================================================
+model KnowledgePoint {
+  id        Int       @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  parent    KnowledgePoint? @relation("Tree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  KnowledgePoint[] @relation("Tree")
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  questions Question[]
+
+  @@index([parentId])
+}
+
+// ============================================================
+// 标签：自由打标
+// ============================================================
+model Tag {
+  id        Int           @id @default(autoincrement())
+  name      String        @unique
+  color     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  questions QuestionTag[]
+
+  @@index([name])
+}
+
+// ============================================================
+// 公司：来源统计
+// ============================================================
+model Company {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  alias     String?   // JSON 别名，如 ["字节跳动", "ByteDance"]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  questions QuestionCompany[]
+
+  @@index([name])
+}
+
+// ============================================================
+// 题目-公司 关联（多对多）
+// ============================================================
+model QuestionCompany {
+  questionId Int
+  companyId  Int
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+
+  @@id([questionId, companyId])
+  @@index([questionId])
+  @@index([companyId])
+}
+
+// ============================================================
+// 题目：核心实体（纯题目数据，不含派生状态）
+// ============================================================
+model Question {
+  id               Int       @id @default(autoincrement())
+  title            String    // 题干（含代码题背景描述）
+  type             String    // concept | coding | scene | algorithm
+  difficulty       Int       @default(3) // 1-5 客观难度评级
+  knowledgePointId Int?
+  referenceAnswer  String?   // 参考解答，Markdown 格式
+  source           String?   // 来源描述：字节 2024 二面 / 手写题精选 等
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime? // 软删除时间
+
+  knowledgePoint KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+  tags            QuestionTag[]
+  companies       QuestionCompany[]
+  practiceRecords PracticeRecord[]
+  spacedReps      SpacedReputation?
+  sessionQuestions SessionQuestion[]
+
+  @@index([knowledgePointId])
+  @@index([type])
+  @@index([difficulty])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// 题目-标签 关联（多对多）
+// ============================================================
+model QuestionTag {
+  questionId Int
+  tagId      Int
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+
+  @@id([questionId, tagId])
+  @@index([tagId])
+}
+
+// ============================================================
+// 刷题会话：一次连续刷题的容器
+// ============================================================
+model PracticeSession {
+  id           Int      @id @default(autoincrement())
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  totalQuestions Int    @default(0)
+  correctCount   Int    @default(0)
+  wrongCount     Int    @default(0)
+  fuzzyCount     Int    @default(0)
+
+  records  PracticeRecord[]
+  questions SessionQuestion[]
+
+  @@index([startedAt])
+}
+
+// ============================================================
+// 会话-题目快照：记录本次出题
+// ============================================================
+model SessionQuestion {
+  sessionId    Int
+  questionId   Int
+  orderIndex   Int      @default(0)
+  status       String   @default("pending")  // pending | answered | skipped
+  result       String?  // correct | wrong | fuzzy（答题后填入）
+  createdAt    DateTime @default(now())
+
+  session  PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@id([sessionId, questionId])
+  @@index([questionId])
+  @@index([status])
+}
+
+// ============================================================
+// 刷题记录：单次答题日志（驱动掌握度计算的数据源）
+// ============================================================
+model PracticeRecord {
+  id          Int      @id @default(autoincrement())
+  questionId  Int
+  sessionId   Int?
+  result      String   // correct | wrong | fuzzy
+  myAnswer    String?  // 我的解答，Markdown
+  durationMs  Int?     // 作答耗时（毫秒），用于统计
+  practicedAt DateTime @default(now())
+
+  question Question         @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  session  PracticeSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([questionId])
+  @@index([sessionId])
+  @@index([practicedAt])
+  @@index([result])
+}
+
+// ============================================================
+// 间隔复习记录：SM-2 算法状态（每题一条，可选功能）
+// ============================================================
+model SpacedReputation {
+  id            Int      @id @default(autoincrement())
+  questionId    Int      @unique
+  repetition    Int      @default(0)  // 已复习次数
+  easeFactor    Float    @default(2.5) // 难度因子，>=1.3
+  intervalDays  Int      @default(0)  // 当前间隔天数
+  nextReviewAt  DateTime @default(now()) // 下次复习时间
+  lastReviewAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+}
+
+// ============================================================
+// 审计日志：记录所有增删改操作
+// ============================================================
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  entity     String   // 操作实体：question | tag | knowledge_point | practice
+  entityId   Int      // 实体 ID
+  action     String   // 操作类型：create | update | delete | restore
+  changes    String?  // 变更内容 JSON 格式
+  createdAt  DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}

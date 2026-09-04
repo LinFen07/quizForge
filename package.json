@@ -1,0 +1,30 @@
+{
+  "name": "quiz-forge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @quiz-forge/server dev",
+    "dev:web": "pnpm --filter @quiz-forge/web dev",
+    "build": "pnpm --filter @quiz-forge/shared build && pnpm --filter @quiz-forge/server build && pnpm --filter @quiz-forge/web build",
+    "start": "pnpm --filter @quiz-forge/server start:prod",
+    "db:migrate": "pnpm --filter @quiz-forge/server db:migrate",
+    "db:seed": "pnpm --filter @quiz-forge/server db:seed",
+    "lint": "eslint --fix",
+    "format": "prettier --write \"**/*.{vue,ts,tsx,js,json,css,md}\"",
+    "type-check": "pnpm --filter @quiz-forge/web type-check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@typescript-eslint/parser": "^8.69.0",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-vue": "^10.10.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.4.1",
+    "prettier": "^3.9.6",
+    "typescript-eslint": "^8.69.0"
+  }
+}
