@@ -18,6 +18,18 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    volumes:
+      - db-data:/app/apps/server/prisma
+    environment:
+      - DATABASE_URL=file:./dev.db
+    command: >
+      sh -c "npx prisma migrate deploy && npx prisma generate"
+    restart: "no"
+
   web:
     build:
       context: .

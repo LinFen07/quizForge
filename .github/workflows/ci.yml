@@ -162,6 +162,6 @@ jobs:
             cd /opt/quizforge
             git pull origin main
             docker compose pull
+            docker compose run --rm migrate
             docker compose up -d --remove-orphans
-            docker compose exec -T server npx prisma migrate deploy
             docker image prune -f
