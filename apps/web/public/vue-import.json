@@ -1,0 +1,461 @@
+[
+  {
+    "title": "什么是 MVVM？请解释 Model、View、ViewModel 各自的作用",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 1,
+    "referenceAnswer": "MVVM 是 Model-View-ViewModel 的缩写，把 MVC 中的 Controller 演变为 ViewModel。\n\n- **Model**：数据模型层，只关注数据本身，定义数据修改与操作的业务逻辑\n- **View**：用户操作界面，ViewModel 更新时通过数据绑定同步更新\n- **ViewModel**：业务逻辑层，是 View 的 Model，充当 View 与 Model 之间的桥梁\n\n总结：MVVM 简化了界面与业务的依赖，解决了数据频繁更新的问题。",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "Vue 有哪些特点和优势？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 1,
+    "referenceAnswer": "Vue 的特点：\n- 简洁：HTML 模板 + JSON 数据 + Vue 实例\n- 数据驱动：自动计算属性、追踪依赖\n- 组件化：可复用、解耦的组件\n- 轻量：代码量小、不依赖其他库\n- 快速：精确有效的批量 DOM 更新\n\n工程视角优势：\n- 低耦合：视图可独立于 Model 变化\n- 可重用性：视图逻辑可被多个 View 复用\n- 可测试：针对 ViewModel 编写测试",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "请描述 Vue 双向绑定的实现原理",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 2,
+    "referenceAnswer": "Vue 双向绑定采用「数据劫持 + 发布者-订阅者」模式：\n\n1. 通过 Object.defineProperty() 劫持各个属性的 setter/getter\n2. 数据变动时发布消息给订阅者，触发监听回调\n\n整体流程：\n- Observer 监听 Model 数据变化\n- Compile 解析编译模板指令（如 {{}} 插值）\n- Watcher 搭起 Observer 与 Compile 之间的通信桥梁\n\n形成「数据变化 → 视图更新」与「视图交互 → 数据变更」的双向绑定闭环。",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue2.x 响应式原理中 Observer、Compile、Watcher 各自的作用是什么？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 2,
+    "referenceAnswer": "- **Observer（观察者）**：遍历数据对象，给所有属性加上 setter 和 getter，监听数据变化\n\n- **Compile（编译器）**：解析模板指令，将模板变量替换为数据并初始化渲染页面；同时为每个指令对应的节点绑定更新函数、添加监听数据的订阅者\n\n- **Watcher（订阅者）**：Observer 与 Compile 之间通信的桥梁。实例化时向属性订阅器 dep 添加自己；当属性变动、dep.notice() 通知时，调用自身 update() 方法，并触发 Compile 中绑定的回调",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue3 为什么用 Proxy 替代 Object.defineProperty？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 2,
+    "referenceAnswer": "Vue3 改用 Proxy 的原因：\n\n1. **监听能力更强**：Proxy 可直接监听对象和数组的变化，有 13 种拦截方法\n2. **无需遍历**：Proxy 代理整个对象，不需要遍历每个属性\n3. **支持动态增删**：可以监听对象属性的动态新增和删除\n4. **更好的性能**：作为 ES2015 新标准，将持续获得浏览器厂商的性能优化\n\n深度观测实现：Proxy 只代理对象的第一层，通过 Reflect.get 判断返回值是否为 Object，若是则再通过 reactive 方法做代理。\n\n防止多次触发：监测数组时通过判断 key 是否为自身属性、旧值与新值是否相等来避免重复更新。",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Proxy 和 Object.defineProperty 有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 2,
+    "referenceAnswer": "| 特性 | Object.defineProperty | Proxy |\n|------|---------------------|-------|\n| 监听数组 | 不支持 | 支持 |\n| 监听对象属性 | 需遍历 | 直接代理 |\n| 监听新增属性 | 不支持 | 支持 |\n| 监听删除属性 | 不支持 | 支持 |\n| 性能 | 较差 | 较好 |\n| 兼容性 | IE9+ | ES2015+ |",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Object.defineProperty 有什么缺陷？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 2,
+    "referenceAnswer": "1. **不能监听数组的变化**：无法监控数组下标的变化，通过下标添加元素不能实时响应\n2. **必须遍历对象的每个属性**：只能劫持属性，属性值是对象时还需深度遍历\n3. **无法监听动态新增或删除的属性**：因此 Vue2 中需要 Vue.set / Vue.delete 辅助触发视图更新",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue2 是如何实现数组变化侦测的？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 2,
+    "referenceAnswer": "Vue2 使用函数劫持方式重写数组方法：\n\n1. 将 data 中数组的原型链重写，指向自己定义的数组原型方法\n2. 当调用 push、pop、shift、unshift、splice、sort、reverse 这 7 个变更方法时，通知依赖更新\n3. 数组中若包含引用类型，会对其再次递归遍历监控\n\nVue3 改用 Proxy 后可直接监听数组变化。",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue.set 和 Vue.delete 的作用是什么？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 2,
+    "referenceAnswer": "- **Vue.set(target, key, value)**：向响应式对象添加新属性并触发视图更新\n- **Vue.delete(target, key)**：删除响应式对象的属性并触发视图更新\n\n与 delete 的区别：\n- delete 只是把被删元素变为 empty/undefined，其他元素键值不变\n- Vue.delete 直接删除元素，改变数组键值\n\n能触发视图更新的数组方法：push、pop、shift、unshift、splice、sort、reverse 以及 Vue.set",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "为什么需要虚拟 DOM？为什么还需要 diff？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 2,
+    "referenceAnswer": "**为什么需要虚拟 DOM**：\n频繁操作真实 DOM 代价昂贵，虚拟 DOM 是用原生 JS 对象描述 DOM 节点的抽象层。\n\n**为什么还需要 diff**：\n现代框架侦测变化分 pull 与 push 两类：\n- React/Angular 属 pull（setState 或脏检查后暴力 diff）\n- Vue 的响应式系统属 push，数据一变立刻知道「在哪变了」\n\nVue 采用中等粒度方案：\n- 组件级用 push 侦测第一时间定位变化组件\n- 组件内部再用虚拟 DOM diff（pull）获取具体差异\n- 即 push + pull 结合\n\n**key 的作用**：\n- 准确：使 diff 更准确，避免节点状态被错误保留\n- 快速：key 的唯一性可被 Map 数据结构利用，查找从 O(n) 降为 O(1)",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue 为什么是异步渲染的？nextTick 的作用是什么？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 2,
+    "referenceAnswer": "**异步渲染原因**：\nVue 是组件级更新，若同步更新每次数据变化都会重新渲染，所以 Vue 在本轮数据更新后异步更新视图。\n\n**更新链路**：\ndep.notify() → subs[i].update → queueWatcher 去重放入队列 → nextTick(flushSchedulerQueue) 刷新 watcher 队列\n\n**nextTick 作用**：\n在下次 DOM 更新循环结束之后执行延迟回调，可用于获取更新后的 DOM 状态。\n\n**实现方式**：\n按执行环境依次尝试 Promise、MutationObserver、setImmediate，均不支持则采用 setTimeout（宏任务与微任务结合）",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue 生命周期有几个阶段？首次加载会触发哪些钩子？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 3,
+    "referenceAnswer": "Vue 生命周期包括 8 个阶段：\nbeforeCreate → created → beforeMount → mounted → beforeUpdate → updated → beforeDestroy → destroyed\n\n**首次页面加载触发的钩子**：\nbeforeCreate、created、beforeMount、mounted\n\n注意：\n- DOM 渲染在 mounted 中已经完成\n- mounted 并不承诺所有子组件都已挂载\n- 如需等待整个视图渲染完毕，可用 vm.$nextTick 包裹后续逻辑",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "父子组件生命周期调用顺序是怎样的？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 3,
+    "referenceAnswer": "**渲染顺序**：先父后子\n父 beforeCreate → 父 created → 父 beforeMount → 子 beforeCreate → 子 created → 子 beforeMount → 子 mounted → 父 mounted\n\n**更新顺序**：\n父 beforeUpdate → 子 beforeUpdate → 子 updated → 父 updated\n\n**销毁顺序**：先父后子\n父 beforeDestroy → 子 beforeDestroy → 子 destroyed → 父 destroyed",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue 各生命周期钩子分别适合做什么？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 3,
+    "referenceAnswer": "- **beforeCreate**：添加 loading 事件\n- **created**：初始化完成时的事件，如结束 loading、发起异步请求\n- **mounted**：挂载元素后获取 DOM 节点\n- **updated**：对数据统一处理\n- **beforeDestroy**：确认停止事件的确认框\n\n接口请求一般放在 mounted 中；但 SSR 不支持 mounted，需要放到 created 中。",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue 父组件如何向子组件传递数据？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 4,
+    "referenceAnswer": "父组件通过 props 向子组件传递数据：\n\n1. 子组件通过 props 选项声明期望获得的数据\n2. 可声明类型与是否必填（如 type: String、required: true）\n3. 父组件模板写法：`<Child :msg=\"message\"></Child>`",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "子组件如何向父组件传递数据？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 4,
+    "referenceAnswer": "子组件通过 $emit 触发事件并回调给父组件：\n\n1. 父组件向子组件传递事件方法\n2. 子组件通过 $emit 触发事件\n\n示例：\n```vue\n<!-- 父组件 -->\n<Child @msgFunc=\"func\"></Child>\n\n<!-- 子组件 -->\nthis.$emit('msgFunc')\n```",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "非父子组件如何通信？eventBus 是什么？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 4,
+    "referenceAnswer": "非父子组件通信方式：\n\n1. **eventBus**：实例化一个 Vue 实例 Bus 作为事件中心\n   - 通信组件都引入 Bus\n   - 分别调用 $on 监听、$emit 触发\n   - 适合小规模项目\n\n2. **Vuex**：适合中大型项目的状态管理",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "ref 和 $parent 分别怎么用？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 4,
+    "referenceAnswer": "**ref 用法**：\n- 获取 DOM 元素：`this.$refs.box`\n- 获取子组件数据：`this.$refs.box.msg`\n- 调用子组件方法：`this.$refs.box.open()`\n\n**$parent 用法**：\n- 子组件调用父组件方法：`this.$parent.event`\n- 或用 $emit 触发事件由父组件监听",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "插槽和作用域插槽有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 4,
+    "referenceAnswer": "**普通插槽**：\n- 创建组件虚拟节点时，将组件儿子的虚拟节点保存起来\n- 初始化组件时按插槽属性分类\n- 渲染作用域为父组件\n\n**作用域插槽**：\n- 解析时不会作为组件的孩子节点，而是解析成函数\n- 子组件渲染时调用此函数进行渲染\n- 渲染作用域是当前子组件，可访问子组件的数据",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue.mixin 的作用是什么？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 4,
+    "referenceAnswer": "Vue.mixin 用于相同逻辑的抽离复用：\n\n- 将公共逻辑混入每个组件的生命周期与函数中\n- 用于复用相同的逻辑\n\n注意：mixin 会导致代码来源不明确，命名冲突等问题，Vue3 推荐使用 Composition API 替代。",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "v-if 和 v-show 有什么区别？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 5,
+    "referenceAnswer": "| 特性 | v-if | v-show |\n|------|------|--------|\n| 实现方式 | 条件渲染，不满足条件元素不会渲染 | CSS display 属性切换 |\n| 性能 | 切换开销大 | 初始渲染开销大 |\n| 适用场景 | 不频繁切换 | 频繁切换 |\n| 条件为 false | 不渲染 DOM | 渲染但 display:none |",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "v-model 的实现原理是什么？它本质是什么？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 5,
+    "referenceAnswer": "v-model 本质是语法糖，为不同输入元素使用不同属性并抛出不同事件：\n\n- **text 与 textarea**：value 属性 + input 事件\n- **checkbox 与 radio**：checked 属性 + change 事件\n- **select**：value 作为 prop，change 作为事件\n\n等价写法：\n```html\n<input v-model=\"sth\" />\n<!-- 等同于 -->\n<input :value=\"sth\" @input=\"sth = $event.target.value\" />\n```\n\n自定义组件实现 v-model：\n父组件 `<Child v-model=\"num\">`，子组件通过 props 接收 value、通过 $emit('input', value) 修改",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "如何实现 scoped 样式穿透？",
+    "type": "scene",
+    "difficulty": 3,
+    "knowledgePointId": 5,
+    "referenceAnswer": "scoped 可避免组件间样式污染，但有时需要修改子组件样式：\n\n**方法一：深度选择器**\n```css\n.wrap /deep/ .box {\n  /* 样式 */\n}\n```\n\n**方法二：双 style 标签**\n```vue\n<style scoped>\n/* 普通样式 */\n</style>\n<style>\n/* 需要穿透的样式 */\n</style>\n```",
+    "tagIds": [2],
+    "companyIds": []
+  },
+  {
+    "title": "computed、watch 和 method 有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 6,
+    "referenceAnswer": "| 特性 | computed | watch | method |\n|------|----------|-------|--------|\n| 缓存 | 有 | 无 | 无 |\n| 依赖变化 | 自动重新计算 | 执行回调 | 手动调用 |\n| 适用场景 | 依赖其他数据变动 | 数据变化时做操作 | 复用逻辑 |\n\n结论：\n- 当数据依赖其他数据变动时，使用 computed\n- 当数据变化时做某些事情（尤其异步或大开销操作）时，使用 watch",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "computed 的实现原理是什么？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 6,
+    "referenceAnswer": "computed 本质是一个具备缓存的 watcher：\n\n1. 初始化 data 时用 Object.defineProperty 把属性转为 getter/setter\n2. 初始化 computed 时遍历每个属性，每个 computed 属性都是一个 watch 实例\n3. 属性提供的函数作为该属性的 getter 并用 defineProperty 转化\n4. getter 执行时进行依赖收集，依赖变化时触发属性重新计算\n5. 若 computed 嵌套其他 computed，先进行其他计算属性的依赖收集",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "为什么 Vue 组件的 data 必须是函数？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 7,
+    "referenceAnswer": "每个组件都是 Vue 的实例，一个组件被复用多次会创建多个实例，用的是同一个构造函数。\n\n如果 data 是对象：\n- 对象属于引用类型会被共享\n- 改变其中一个实例的数据会影响其他实例\n\n所以 data 必须是返回新对象的函数，保证不同实例之间 data 不冲突。",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "keep-alive 的作用是什么？有哪些常用属性？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 7,
+    "referenceAnswer": "keep-alive 用于组件缓存：\n\n- 组件切换时不会卸载当前组件\n- 保留组件状态或避免重复渲染\n- 适合「列表与详情」高频切换场景\n\n常用属性：\n- include/exclude：组件有条件的缓存\n- max：最大缓存数\n\n生命周期：\n- activated：组件进入时触发\n- deactivated：组件离开时触发",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "vue.extend 和 Vue.component 有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 7,
+    "referenceAnswer": "- **vue.extend**：构造组件的构造器（语法器）\n  - 可作用于 Vue.component 全局注册\n  - 可作用到 Vue 实例或组件的 components 属性\n\n- **Vue.component**：\n  - 可以创建组件\n  - 可以获取组件",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "什么是异步组件？它的作用是什么？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 7,
+    "referenceAnswer": "异步组件的核心是把组件定义变成函数，依赖 import() 语法实现文件的分割加载（按需加载）。\n\n作用：\n- 异步组件分开打包\n- 用 jsonp 方式加载\n- 有效解决打包文件过大的问题\n- 节省打包体积",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "在 Vue 中使用插件的步骤是什么？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 7,
+    "referenceAnswer": "1. 引入插件\n```js\nimport MyPlugin from './my-plugin'\n```\n\n2. 使用插件\n```js\nVue.use(MyPlugin, { someOption: true })\n```\n\n也可使用 CommonJS 的 require() 方法引入。",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "hash 模式和 history 模式有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 8,
+    "referenceAnswer": "| 特性 | hash 模式 | history 模式 |\n|------|----------|-------------|\n| URL 外观 | 带 # 号 | 不带 # 号 |\n| 原理 | hashchange 事件 | History API |\n| 服务端配置 | 不需要 | 需要配置 fallback |\n| 兼容性 | IE8+ | IE10+ |\n| SEO | 较差 | 较好 |",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "history API 的 pushState 和 replaceState 有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 8,
+    "referenceAnswer": "- **pushState**：新增一条历史记录，可在不刷新页面的情况下改变 URL\n- **replaceState**：替换当前历史记录而非新增\n\n共同点：\n- 新 url 与当前 url 的 origin 必须一致\n- 不能触发 popstate 事件\n\n可通过自定义事件 new Event() 包装并全局监听 pushState/replaceState 的变化。",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue Router 的导航守卫有哪些？它们的执行顺序是怎样的？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 8,
+    "referenceAnswer": "**导航守卫分类**：\n\n1. **全局守卫**：\n   - router.beforeEach（进入路由之前）\n   - router.beforeResolve（2.5.0+）\n   - router.afterEach（进入路由之后）\n\n2. **路由独享守卫**：\n   - beforeEnter（在路由配置上定义）\n\n3. **组件内守卫**：\n   - beforeRouteEnter（2.2+）\n   - beforeRouteUpdate（2.2+）\n   - beforeRouteLeave\n\n**完整导航解析流程**：\n导航被触发 → 失活组件调用离开守卫 → 全局 beforeEach → 重用组件调用 beforeRouteUpdate → 路由配置调用 beforeEnter → 解析异步路由组件 → 激活组件调用 beforeRouteEnter → 全局 beforeResolve → 导航被确认 → 全局 afterEach → 触发 DOM 更新",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "$route 和 $router 有什么区别？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 8,
+    "referenceAnswer": "- **$route**（路由信息对象）：\n  - path、params、hash、query\n  - fullPath、matched、name\n\n- **$router**（路由实例对象）：\n  - 路由的跳转方法\n  - 钩子函数等",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "Vuex 的核心概念有哪些？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 9,
+    "referenceAnswer": "- **state**：单一状态树，存放数据状态，响应式\n- **getters**：类似计算属性，过滤、派生数据\n- **mutations**：定义的方法动态修改 store 状态（同步）\n- **actions**：异步操作数据，提交 mutation\n- **modules**：模块化管理，每个模块拥有自己的 state/mutation/action/getters",
+    "tagIds": [1],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vuex 的 action 和 mutation 有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 9,
+    "referenceAnswer": "- **mutation**：\n  - 同步更新\n  - $watch 严格模式下异步修改会报错\n  - 直接变更状态\n\n- **action**：\n  - 可含任意异步操作\n  - 提交的是 mutation 而非直接变更状态\n  - 可以获取数据后再提交 mutation 写入最终数据",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "什么样的数据应该放进 Vuex 的 state？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 9,
+    "referenceAnswer": "应该放入 state 的数据：\n1. 组件之间全局共享的数据\n2. 通过后端异步请求的数据（被多处复用时）\n\n不必放入 state 的数据：\n- 请求来的数据仅在被请求的组件内使用\n- 不被其他组件复用\n\n如果被多处复用，可将请求放入 action 中，方便复用并包装成 promise 返回。",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue 模板编译的三个阶段分别是什么？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 10,
+    "referenceAnswer": "Vue 模板编译将 template 转化为 render 函数，分为三个阶段：\n\n1. **parse（解析）**：\n   - 用正则表达式解析模板\n   - 遇到标签、文本执行对应钩子\n   - 生成 AST 抽象语法树\n\n2. **optimize（优化）**：\n   - 深度遍历 AST\n   - 标记静态节点\n   - diff 时跳过静态节点\n\n3. **generate / codegen（生成）**：\n   - 将优化后的 AST 转换为可执行的 render 字符串",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue 的 diff 算法是怎样的？时间复杂度是多少？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 10,
+    "referenceAnswer": "**核心流程**：\n1. 同级比较再比较子节点\n2. 先判断一方有子节点一方没有\n3. 新旧都有子节点时走核心 diff\n4. 递归比较子节点\n\n**时间复杂度**：\n- 正常 Diff 两棵树：O(n³)\n- Vue 优化后：O(n)\n- 只进行同层比较、不跨层级移动 DOM\n\n**双端比较算法**：\n同时从新旧 children 的两端开始比较：\n- 旧前新前\n- 旧后新后\n- 旧前新后\n- 旧后新前\n\n4 种比较都无法匹配时，借助 key 值找到可复用节点。",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue2 和 Vue3 的 diff 算法有什么差异？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 10,
+    "referenceAnswer": "- **Vue2**：采用双端比较算法\n\n- **Vue3**：\n  - 创建 VNode 时就确定其类型\n  - mount/patch 过程中采用位运算判断 VNode 类型\n  - 配合核心 diff 算法，性能较 Vue2 有提升",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue3 有哪些新特性？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 11,
+    "referenceAnswer": "1. **性能提升**：虚拟 DOM 生成更快，事件缓存\n\n2. **Tree-shaking**：打包时去除无用代码，简单项目可能只有约 13.5kb\n\n3. **Fragments 碎片**：允许多个根节点\n\n4. **TypeScript**：对 TS 支持度很好，本身用 TS 编写\n\n5. **Composition API**：逻辑重用与更集中的代码组织\n\n6. **兼容性**：核心响应式用 Proxy，早期不支持 IE11",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue3 是如何变得更快的？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 11,
+    "referenceAnswer": "1. **diff 方法优化（PatchFlag 静态标记）**：\n   - Vue2 全量对比\n   - Vue3 只对比带 patch flag 的节点\n   - 通过 flag 信息得知要对比的具体内容\n\n2. **hoistStatic 静态提升**：\n   - Vue2 每次都重新创建\n   - Vue3 对不参与更新的元素只创建一次，后续复用\n\n3. **cacheHandlers 事件侦听器缓存**：\n   - 默认 onClick 被视为动态绑定\n   - Vue3 直接缓存复用，减少追踪开销",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Composition API 解决了什么问题？有哪些核心函数？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 11,
+    "referenceAnswer": "**解决的问题**：\nOptions API 导致相同功能代码分散\n\n**核心函数**：\n- setup：组合式 API 入口\n- ref：声明响应式数据\n- reactive：声明响应式对象\n- watchEffect：自动追踪依赖\n- watch：监听特定数据\n- computed：计算属性\n- toRefs：解构响应式对象\n- 生命周期 hooks\n\n**好处**：\n- 逻辑重用（把功能部分抽离）\n- 代码更集中",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "什么是 SSR？它的原理是什么？",
+    "type": "concept",
+    "difficulty": 4,
+    "knowledgePointId": 12,
+    "referenceAnswer": "SSR（Server-Side Rendering）即服务端渲染，将 Vue 在客户端渲染 HTML 的工作放到服务端完成。\n\n**实现原理**：\n1. app.js 作为客户端与服务端的公共入口\n2. 客户端 entry 负责挂载到 DOM\n3. 服务端 entry 进行路由匹配与数据预获取\n4. webpack 分别打包 Client Bundle 和 Server Bundle\n5. 服务器根据 url 加载组件、获取数据、生成 html\n6. 客户端混合（hydration）：对比并激活 DOM",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "SSR 有什么优缺点？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 12,
+    "referenceAnswer": "**优点**：\n- SEO 效果好\n- 首屏加载速度快\n\n**缺点**：\n- 开发条件受限：只支持 beforeCreate 和 created 钩子\n- 使用外部扩展库时需特殊处理\n- 应用需处于 Node.js 运行环境\n- 服务器有更大的负载需求",
+    "tagIds": [1],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue 编码层面有哪些性能优化建议？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 13,
+    "referenceAnswer": "1. 不要在模板里写过多表达式，复杂逻辑放入 computed 或拆分组件\n\n2. v-for 遍历时给 item 添加 key，避免在 v-for 上同时使用 v-if\n\n3. 频繁切换使用 v-show，不频繁切换使用 v-if\n\n4. 区分 computed 与 watch 的使用\n\n5. 通过 addEventListener 添加的事件，组件销毁时用 removeEventListener 移除\n\n6. 图片懒加载；长列表滚动到可视区域动态加载\n\n7. 路由懒加载、异步组件；防抖与节流；事件代理；keep-alive 缓存组件；拆分组件",
+    "tagIds": [1, 2],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue 在加载与打包层面有哪些优化方式？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 13,
+    "referenceAnswer": "1. 减少入口文件体积；静态资源本地缓存；开启 Gzip 压缩\n\n2. 第三方插件按需引入（如 babel-plugin-component）；路由懒加载\n\n3. 图片压缩；使用 CommonsChunkPlugin 提取公共代码；提取组件的 CSS；优化 SourceMap\n\n4. 构建结果输出分析（webpack-bundle-analyzer）\n\n5. Tree Shaking / Scope Hoisting\n\n6. 使用 CDN 加载第三方模块\n\n7. happypack 多线程打包；splitChunks 抽离公共文件",
+    "tagIds": [1, 2],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "Vue 和 React 有哪些相同点和不同点？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 14,
+    "referenceAnswer": "**相同点**：\n- 都使用虚拟 DOM\n- 都提倡组件化开发\n- 都有 props 概念\n- 构建工具、Chrome 插件与配套框架都很完善\n\n**不同点**：\n| 特性 | Vue | React |\n|------|-----|-------|\n| 模板 | HTML 模板 | JSX |\n| 响应式 | 响应式追踪 | 状态驱动 |\n| 状态管理 | Vuex | Redux |\n| 路由 | vue-router | react-router |",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2, 3]
+  },
+  {
+    "title": "Vue 和 Angular 有什么区别？",
+    "type": "concept",
+    "difficulty": 3,
+    "knowledgePointId": 14,
+    "referenceAnswer": "| 特性 | Vue | Angular |\n|------|-----|---------|\n| 语言 | JS/TS | TypeScript |\n| 响应式 | 依赖追踪 | 脏检查 |\n| 学习成本 | 较小 | 较大 |\n| 社区 | 成长中 | 完善 |\n| 性能 | 较好 | 较差 |\n\nAngularJS 依赖对数据做脏检查，Watcher 越多越慢；Vue 使用基于依赖追踪的观察并使用异步队列更新。",
+    "tagIds": [1, 3],
+    "companyIds": [1, 2]
+  },
+  {
+    "title": "vue-cli 工程中 src 目录结构是怎样的？",
+    "type": "concept",
+    "difficulty": 2,
+    "knowledgePointId": 15,
+    "referenceAnswer": "src 目录结构：\n- **assets**：静态资源\n- **components**：组件\n- **router**：路由配置\n- **view**：视图\n- **app.vue**：应用主组件\n- **main.js**：入口文件",
+    "tagIds": [1],
+    "companyIds": []
+  },
+  {
+    "title": "移动端 Header 组件如何设计？",
+    "type": "scene",
+    "difficulty": 3,
+    "knowledgePointId": 15,
+    "referenceAnswer": "Header 分为左、中、右三个区域：\n\n- **中间**：主标题，每个页面不同，通过 props 做成可配置\n- **左侧**：通常是回退按钮，样式内容不同\n- **右侧**：功能性操作按钮\n\n实现方式：\n- 左右两侧通过 slot 插槽对外暴露\n- 提供 default slot 默认插槽统一页面风格",
+    "tagIds": [2],
+    "companyIds": []
+  }
+]

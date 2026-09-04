@@ -1,8 +1,23 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export interface ImportError {
+  index: number;
+  title?: string;
+  error: string;
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  total: number;
+  errors: ImportError[];
+}
 
 @Injectable()
 export class ImportExportService {
+  private readonly logger = new Logger(ImportExportService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async exportAll() {
@@ -27,17 +42,24 @@ export class ImportExportService {
     };
   }
 
-  async importQuestions(data: any[]) {
+  async importQuestions(data: any[]): Promise<ImportResult> {
     if (!Array.isArray(data)) {
       throw new BadRequestException('Import data must be an array');
     }
 
     let imported = 0;
     let skipped = 0;
+    const errors: ImportError[] = [];
 
-    for (const item of data) {
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
       try {
         const { tagIds, companyIds, ...questionData } = item;
+
+        if (!questionData.title || !questionData.type) {
+          throw new BadRequestException('title 和 type 为必填字段');
+        }
+
         await this.prisma.question.create({
           data: {
             ...questionData,
@@ -50,11 +72,22 @@ export class ImportExportService {
           },
         });
         imported++;
-      } catch {
+      } catch (error) {
         skipped++;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        errors.push({
+          index: i,
+          title: item?.title,
+          error: errorMsg,
+        });
+        this.logger.warn(`Import failed at index ${i}: ${errorMsg}`);
       }
     }
 
-    return { imported, skipped, total: data.length };
+    this.logger.log(
+      `Import completed: ${imported} imported, ${skipped} skipped, ${data.length} total`,
+    );
+
+    return { imported, skipped, total: data.length, errors };
   }
 }

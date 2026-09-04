@@ -14,7 +14,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
-      '@interview-quiz/shared': resolve(__dirname, '../../packages/shared/src'),
+      '@quiz-forge/shared': resolve(__dirname, '../../packages/shared/src'),
     },
   },
   server: {

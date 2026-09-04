@@ -1,16 +1,46 @@
 <template>
-  <div v-if="question" class="question-detail">
+  <div
+    v-if="question"
+    class="question-detail"
+  >
     <div class="page-header">
-      <h1 class="page-title">题目详情</h1>
+      <h1 class="page-title">
+        题目详情
+      </h1>
       <div class="header-actions">
-        <button class="secondary" @click="router.back()">返回</button>
-        <button class="secondary" @click="openEdit()">编辑</button>
-        <button v-if="question.deletedAt" class="primary" @click="handleRestore">恢复</button>
-        <button v-else class="danger" @click="handleDelete">删除</button>
+        <button
+          class="secondary"
+          @click="router.back()"
+        >
+          返回
+        </button>
+        <button
+          class="secondary"
+          @click="openEdit()"
+        >
+          编辑
+        </button>
+        <button
+          v-if="question.deletedAt"
+          class="primary"
+          @click="handleRestore"
+        >
+          恢复
+        </button>
+        <button
+          v-else
+          class="danger"
+          @click="handleDelete"
+        >
+          删除
+        </button>
       </div>
     </div>
 
-    <div v-if="question.deletedAt" class="deleted-banner">
+    <div
+      v-if="question.deletedAt"
+      class="deleted-banner"
+    >
       此题目已删除
     </div>
 
@@ -25,29 +55,64 @@
         <span v-if="question.source">来源: {{ question.source }}</span>
       </div>
       <div class="q-tags">
-        <span v-for="tag in question.tags" :key="tag.id" class="tag">{{ tag.name }}</span>
+        <span
+          v-for="tag in question.tags"
+          :key="tag.id"
+          class="tag"
+        >{{ tag.name }}</span>
+        <span
+          v-for="c in question.companies"
+          :key="c.id"
+          class="company"
+        >{{ c.name }}</span>
       </div>
     </div>
 
     <div class="card answer-section">
       <h3>参考解答</h3>
-      <div class="answer-content">{{ question.referenceAnswer || '暂无解答' }}</div>
+      <div class="answer-content">
+        <MarkdownRenderer
+          v-if="question.referenceAnswer"
+          :content="question.referenceAnswer"
+        />
+        <span
+          v-else
+          class="no-answer"
+        >暂无解答</span>
+      </div>
     </div>
 
-    <div v-if="question.practiceRecords?.length" class="card">
+    <div
+      v-if="question.practiceRecords?.length"
+      class="card"
+    >
       <h3>历史刷题记录</h3>
-      <div v-for="r in question.practiceRecords" :key="r.id" class="record-item">
+      <div
+        v-for="r in question.practiceRecords"
+        :key="r.id"
+        class="record-item"
+      >
         <span :class="['result', r.result]">{{ r.result }}</span>
         <span class="time">{{ new Date(r.practicedAt).toLocaleString() }}</span>
       </div>
     </div>
 
-    <div v-if="auditLogs.length > 0" class="card">
+    <div
+      v-if="auditLogs.length > 0"
+      class="card"
+    >
       <h3>操作记录</h3>
-      <div v-for="log in auditLogs" :key="log.id" class="audit-item">
+      <div
+        v-for="log in auditLogs"
+        :key="log.id"
+        class="audit-item"
+      >
         <span :class="['audit-action', log.action]">{{ log.action }}</span>
         <span class="audit-time">{{ new Date(log.createdAt).toLocaleString() }}</span>
-        <span v-if="log.changes" class="audit-changes">{{ formatChanges(log.changes) }}</span>
+        <span
+          v-if="log.changes"
+          class="audit-changes"
+        >{{ formatChanges(log.changes) }}</span>
       </div>
     </div>
 
@@ -60,30 +125,54 @@
     >
       <div class="form-group">
         <label>题干</label>
-        <textarea v-model="formData.title" rows="3" placeholder="输入题目内容"></textarea>
+        <textarea
+          v-model="formData.title"
+          rows="3"
+          placeholder="输入题目内容"
+        />
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>题型</label>
           <select v-model="formData.type">
-            <option value="concept">概念题</option>
-            <option value="coding">手写题</option>
-            <option value="scene">场景题</option>
-            <option value="algorithm">算法题</option>
+            <option value="concept">
+              概念题
+            </option>
+            <option value="coding">
+              手写题
+            </option>
+            <option value="scene">
+              场景题
+            </option>
+            <option value="algorithm">
+              算法题
+            </option>
           </select>
         </div>
         <div class="form-group">
           <label>难度</label>
           <select v-model.number="formData.difficulty">
-            <option v-for="d in 5" :key="d" :value="d">{{ '★'.repeat(d) }}</option>
+            <option
+              v-for="d in 5"
+              :key="d"
+              :value="d"
+            >
+              {{ '★'.repeat(d) }}
+            </option>
           </select>
         </div>
       </div>
       <div class="form-group">
         <label>知识点</label>
         <select v-model.number="formData.knowledgePointId">
-          <option :value="null">无</option>
-          <option v-for="kp in flatKnowledgePoints" :key="kp.id" :value="kp.id">
+          <option :value="null">
+            无
+          </option>
+          <option
+            v-for="kp in filterStore.flatKnowledgePoints"
+            :key="kp.id"
+            :value="kp.id"
+          >
             {{ kp.name }}
           </option>
         </select>
@@ -91,19 +180,60 @@
       <div class="form-group">
         <label>标签</label>
         <div class="tag-select">
-          <label v-for="tag in allTags" :key="tag.id" class="tag-option">
-            <input type="checkbox" :value="tag.id" v-model="formData.tagIds" />
+          <label
+            v-for="tag in filterStore.tags"
+            :key="tag.id"
+            class="tag-option"
+          >
+            <input
+              v-model="formData.tagIds"
+              type="checkbox"
+              :value="tag.id"
+            >
             <span class="tag-name">{{ tag.name }}</span>
           </label>
         </div>
       </div>
       <div class="form-group">
+        <label>公司</label>
+        <div class="tag-select">
+          <label
+            v-for="c in filterStore.companies"
+            :key="c.id"
+            class="tag-option"
+          >
+            <input
+              v-model="formData.companyIds"
+              type="checkbox"
+              :value="c.id"
+            >
+            <span class="tag-name">{{ c.name }}</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
         <label>参考解答</label>
-        <textarea v-model="formData.referenceAnswer" rows="4" placeholder="Markdown 格式"></textarea>
+        <div class="answer-editor">
+          <textarea
+            v-model="formData.referenceAnswer"
+            rows="4"
+            placeholder="Markdown 格式"
+          />
+          <div
+            v-if="formData.referenceAnswer"
+            class="answer-preview"
+          >
+            <label>预览</label>
+            <MarkdownRenderer :content="formData.referenceAnswer" />
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label>来源</label>
-        <input v-model="formData.source" placeholder="如：字节 2024 二面" />
+        <input
+          v-model="formData.source"
+          placeholder="如：字节 2024 二面"
+        >
       </div>
     </Modal>
   </div>
@@ -112,20 +242,19 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { questionsApi, knowledgePointsApi, tagsApi } from '@/api';
-import type { Question, KnowledgePoint, Tag } from '@interview-quiz/shared';
+import { questionsApi } from '@/api';
+import { useFilterStore } from '@/stores/filter';
 import Modal from '@/components/Modal.vue';
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
 
 const route = useRoute();
 const router = useRouter();
+const filterStore = useFilterStore();
 const question = ref<any>(null);
 const auditLogs = ref<any[]>([]);
 
 const showModal = ref(false);
 const submitting = ref(false);
-
-const allKnowledgePoints = ref<KnowledgePoint[]>([]);
-const allTags = ref<Tag[]>([]);
 
 const formData = reactive({
   title: '',
@@ -133,22 +262,9 @@ const formData = reactive({
   difficulty: 3,
   knowledgePointId: null as number | null,
   tagIds: [] as number[],
+  companyIds: [] as number[],
   referenceAnswer: '',
   source: '',
-});
-
-const flatKnowledgePoints = computed(() => {
-  const result: KnowledgePoint[] = [];
-  function flatten(items: KnowledgePoint[]) {
-    for (const item of items) {
-      result.push(item);
-      if (item.children?.length) {
-        flatten(item.children);
-      }
-    }
-  }
-  flatten(allKnowledgePoints.value);
-  return result;
 });
 
 async function fetchQuestion() {
@@ -165,6 +281,7 @@ function openEdit() {
     difficulty: question.value.difficulty,
     knowledgePointId: question.value.knowledgePointId,
     tagIds: question.value.tags?.map((t: any) => t.id) || [],
+    companyIds: question.value.companies?.map((c: any) => c.id) || [],
     referenceAnswer: question.value.referenceAnswer || '',
     source: question.value.source || '',
   });
@@ -222,12 +339,7 @@ function formatChanges(changes: string) {
 
 onMounted(async () => {
   await fetchQuestion();
-  const [kp, tag] = await Promise.all([
-    knowledgePointsApi.tree(),
-    tagsApi.list(),
-  ]);
-  allKnowledgePoints.value = kp;
-  allTags.value = tag;
+  await filterStore.fetchAll();
 });
 </script>
 
@@ -294,14 +406,48 @@ onMounted(async () => {
   font-size: 0.75rem;
 }
 
+.company {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
 .answer-section {
   margin-top: 1rem;
 }
 
 .answer-content {
   margin-top: 0.5rem;
-  white-space: pre-wrap;
   line-height: 1.6;
+}
+
+.no-answer {
+  color: #787774;
+  font-style: italic;
+}
+
+.answer-editor textarea {
+  width: 100%;
+  min-height: 100px;
+}
+
+.answer-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f7f6f3;
+  border-radius: 4px;
+  border: 1px solid #e9e9e7;
+}
+
+.answer-preview label {
+  font-size: 12px;
+  color: #787774;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  display: block;
 }
 
 .record-item {
@@ -311,9 +457,15 @@ onMounted(async () => {
   border-bottom: 1px solid #f3f4f6;
 }
 
-.result.correct { color: #22c55e; }
-.result.wrong { color: #ef4444; }
-.result.fuzzy { color: #f59e0b; }
+.result.correct {
+  color: #22c55e;
+}
+.result.wrong {
+  color: #ef4444;
+}
+.result.fuzzy {
+  color: #f59e0b;
+}
 
 .time {
   color: #9ca3af;
@@ -335,10 +487,22 @@ onMounted(async () => {
   font-size: 0.75rem;
 }
 
-.audit-action.create { background: #dcfce7; color: #166534; }
-.audit-action.update { background: #dbeafe; color: #1e40af; }
-.audit-action.delete { background: #fee2e2; color: #991b1b; }
-.audit-action.restore { background: #fef3c7; color: #92400e; }
+.audit-action.create {
+  background: #dcfce7;
+  color: #166534;
+}
+.audit-action.update {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.audit-action.delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.audit-action.restore {
+  background: #fef3c7;
+  color: #92400e;
+}
 
 .audit-time {
   color: #9ca3af;
@@ -354,10 +518,12 @@ onMounted(async () => {
 
 .form-group label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 12px;
   font-weight: 500;
-  margin-bottom: 0.5rem;
-  color: #374151;
+  margin-bottom: 6px;
+  color: #787774;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .form-group input,

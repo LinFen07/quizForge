@@ -4,6 +4,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+// import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { CustomThrottlerGuard } from './common/guards/throttler.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +14,8 @@ async function bootstrap() {
   app.enableCors();
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
+  // app.useGlobalGuards(app.get(JwtAuthGuard), app.get(CustomThrottlerGuard));
+  app.useGlobalGuards(app.get(CustomThrottlerGuard));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -24,6 +28,7 @@ async function bootstrap() {
     .setTitle('面试题库 API')
     .setDescription('Interview Quiz Platform API')
     .setVersion('0.1')
+    // .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);

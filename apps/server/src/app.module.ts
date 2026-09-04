@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { QuestionsModule } from './modules/questions/questions.module';
@@ -9,17 +10,24 @@ import { CompaniesModule } from './modules/companies/companies.module';
 import { PracticeModule } from './modules/practice/practice.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
+// import { AuthModule } from './modules/auth/auth.module';
 import { HealthController } from './common/controllers/health.controller';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
+import { CustomThrottlerGuard } from './common/guards/throttler.guard';
 
 @Module({
   imports: [
-    // 生产环境托管前端静态文件
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'web', 'dist'),
       exclude: ['/api/(.*)'],
     }),
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 3 },
+      { name: 'medium', ttl: 10000, limit: 20 },
+      { name: 'long', ttl: 60000, limit: 100 },
+    ]),
     PrismaModule,
+    // AuthModule,
     QuestionsModule,
     KnowledgePointsModule,
     TagsModule,
@@ -29,6 +37,7 @@ import { LoggerMiddleware } from './common/middlewares/logger.middleware';
     ImportExportModule,
   ],
   controllers: [HealthController],
+  providers: [CustomThrottlerGuard],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
