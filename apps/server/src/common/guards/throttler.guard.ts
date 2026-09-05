@@ -17,14 +17,14 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     return Promise.resolve(req.ip);
   }
 
-  canActivate(context: ExecutionContext) {
+  canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
     if (isPublic) {
-      return true;
+      return Promise.resolve(true);
     }
 
     return super.canActivate(context);
