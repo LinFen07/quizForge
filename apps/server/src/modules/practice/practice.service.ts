@@ -1,12 +1,18 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../common/audit.service';
+import { SpacedReputationService } from './spaced-reputation.service';
 import { StartSessionDto } from './dto/start-session.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
 import { ReviewQueryDto } from './dto/review-query.dto';
 
 @Injectable()
 export class PracticeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+    private spacedReputation: SpacedReputationService,
+  ) {}
 
   async startSession(dto: StartSessionDto = {}) {
     const { count = 10, knowledgePointId, difficulty, type, tagIds, companyIds } = dto;
@@ -210,37 +216,11 @@ export class PracticeService {
   }
 
   async getReviewQueue(query: ReviewQueryDto) {
-    const where: any = {
-      deletedAt: null,
-      practiceRecords: { some: {} },
-      NOT: { practiceRecords: { every: { result: 'correct' } } },
-    };
-
-    if (query.knowledgePointId) where.knowledgePointId = query.knowledgePointId;
-    if (query.difficulty) where.difficulty = query.difficulty;
-
-    const questions = await this.prisma.question.findMany({
-      where,
-      include: {
-        knowledgePoint: { select: { id: true, name: true } },
-        tags: { include: { tag: { select: { id: true, name: true, color: true } } } },
-        companies: { include: { company: { select: { id: true, name: true } } } },
-        practiceRecords: {
-          orderBy: { practicedAt: 'desc' },
-          take: 1,
-        },
-      },
-      orderBy: { updatedAt: 'asc' },
-      take: query.limit ?? 10,
+    return this.spacedReputation.getReviewQueue({
+      knowledgePointId: query.knowledgePointId,
+      difficulty: query.difficulty,
+      limit: query.limit,
     });
-
-    return questions.map((q) => ({
-      ...q,
-      tags: q.tags.map((qt) => qt.tag),
-      companies: q.companies.map((qc) => qc.company),
-      lastResult: q.practiceRecords[0]?.result ?? null,
-      lastPracticedAt: q.practiceRecords[0]?.practicedAt ?? null,
-    }));
   }
 
   async submitAnswer(dto: SubmitAnswerDto) {
@@ -253,8 +233,8 @@ export class PracticeService {
       throw new BadRequestException('result must be correct, wrong, or fuzzy');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const record = await tx.practiceRecord.create({
+    const record = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.practiceRecord.create({
         data: {
           questionId: dto.questionId,
           sessionId: dto.sessionId,
@@ -276,8 +256,24 @@ export class PracticeService {
         data: { updatedAt: new Date() },
       });
 
-      return record;
+      return r;
     });
+
+    // SM-2 间隔复习
+    await this.spacedReputation.submitReview(dto.questionId, dto.result);
+
+    // 审计日志
+    await this.audit.log({
+      entity: 'practice',
+      entityId: dto.questionId,
+      action: 'create',
+      changes: {
+        result: { old: null, new: dto.result },
+        sessionId: { old: null, new: dto.sessionId ?? null },
+      },
+    });
+
+    return record;
   }
 
   async skipQuestion(sessionId: number, questionId: number) {

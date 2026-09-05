@@ -49,9 +49,15 @@ export class PracticeController {
     return this.service.getRandomQuestion(query);
   }
 
-  @Get('review-queue')
-  @ApiOperation({ summary: '获取复习队列' })
+  @Get('review')
+  @ApiOperation({ summary: 'SM-2 间隔复习队列（到期题目）' })
   getReviewQueue(@Query() query: ReviewQueryDto) {
+    return this.service.getReviewQueue(query);
+  }
+
+  @Get('review-queue')
+  @ApiOperation({ summary: '获取复习队列（旧版兼容）' })
+  getReviewQueueLegacy(@Query() query: ReviewQueryDto) {
     return this.service.getReviewQueue(query);
   }
 

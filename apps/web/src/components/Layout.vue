@@ -50,10 +50,23 @@
           <span class="nav-text">统计面板</span>
         </router-link>
         <router-link
+          to="/audit-logs"
+          class="nav-item"
+        >
+          <span class="nav-text">审计日志</span>
+        </router-link>
+        <div class="nav-divider" />
+        <router-link
           to="/settings/io"
           class="nav-item"
         >
           <span class="nav-text">导入导出</span>
+        </router-link>
+        <router-link
+          to="/settings/ai"
+          class="nav-item"
+        >
+          <span class="nav-text">AI 设置</span>
         </router-link>
       </nav>
     </aside>

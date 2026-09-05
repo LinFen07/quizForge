@@ -54,6 +54,16 @@ const router = createRouter({
           name: 'import-export',
           component: () => import('@/views/ImportExport/ImportExportPage.vue'),
         },
+        {
+          path: 'settings/ai',
+          name: 'ai-settings',
+          component: () => import('@/views/Settings/AiSettings.vue'),
+        },
+        {
+          path: 'audit-logs',
+          name: 'audit-logs',
+          component: () => import('@/views/AuditLogs/AuditLogList.vue'),
+        },
       ],
     },
   ],

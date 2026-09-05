@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../common/audit.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private audit: AuditService,
+  ) {}
 
   async findAll(withCount = false) {
     return this.prisma.company.findMany({
@@ -51,11 +55,19 @@ export class CompaniesService {
     });
     if (existing) throw new ConflictException(`公司 "${dto.name}" 已存在`);
 
-    return this.prisma.company.create({ data: dto });
+    const company = await this.prisma.company.create({ data: dto });
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: company.id,
+      action: 'create',
+    });
+
+    return company;
   }
 
   async update(id: number, dto: UpdateCompanyDto) {
-    await this.findById(id);
+    const old = await this.findById(id);
 
     if (dto.name) {
       const existing = await this.prisma.company.findFirst({
@@ -64,12 +76,38 @@ export class CompaniesService {
       if (existing) throw new ConflictException(`公司 "${dto.name}" 已存在`);
     }
 
-    return this.prisma.company.update({ where: { id }, data: dto });
+    const company = await this.prisma.company.update({ where: { id }, data: dto });
+
+    const changes: Record<string, { old: any; new: any }> = {};
+    if (dto.name && dto.name !== old.name) {
+      changes.name = { old: old.name, new: dto.name };
+    }
+    if (dto.alias !== undefined && dto.alias !== old.alias) {
+      changes.alias = { old: old.alias, new: dto.alias };
+    }
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: id,
+      action: 'update',
+      changes: Object.keys(changes).length > 0 ? changes : undefined,
+    });
+
+    return company;
   }
 
   async remove(id: number) {
     await this.findById(id);
-    return this.prisma.company.delete({ where: { id } });
+
+    await this.prisma.company.delete({ where: { id } });
+
+    await this.audit.log({
+      entity: 'question',
+      entityId: id,
+      action: 'delete',
+    });
+
+    return { success: true, message: '公司已删除' };
   }
 
   async findByQuestionIds(questionIds: number[]) {

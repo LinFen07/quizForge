@@ -4,6 +4,14 @@
       <h1 class="page-title">
         复习队列
       </h1>
+      <div class="header-actions">
+        <button
+          class="secondary"
+          @click="fetchSm2Queue"
+        >
+          刷新 SM-2 队列
+        </button>
+      </div>
     </div>
 
     <div
@@ -18,6 +26,9 @@
       class="empty-state"
     >
       <div class="empty-content">
+        <div class="empty-icon">
+          📚
+        </div>
         <h3>暂无需要复习的题目</h3>
         <p>完成刷题后，系统会自动添加需要复习的题目</p>
       </div>
@@ -52,11 +63,21 @@
         <h3 class="q-title">
           {{ q.title }}
         </h3>
-        <div
-          v-if="q.lastPracticedAt"
-          class="q-time"
-        >
-          上次练习: {{ new Date(q.lastPracticedAt).toLocaleDateString() }}
+        <div class="q-footer">
+          <div
+            v-if="q.spacedReputation"
+            class="sm2-info"
+          >
+            <span class="sm2-item">间隔: {{ q.spacedReputation.intervalDays }}天</span>
+            <span class="sm2-item">EF: {{ q.spacedReputation.easeFactor.toFixed(1) }}</span>
+            <span class="sm2-item">复习次数: {{ q.spacedReputation.repetition }}</span>
+          </div>
+          <div
+            v-if="q.spacedReputation?.lastReviewAt"
+            class="q-time"
+          >
+            上次复习: {{ new Date(q.spacedReputation.lastReviewAt).toLocaleDateString() }}
+          </div>
         </div>
       </div>
     </div>
@@ -71,9 +92,17 @@ import type { Question } from '@interview-quiz/shared';
 
 const router = useRouter();
 
+interface SpacedReputation {
+  easeFactor: number;
+  intervalDays: number;
+  repetition: number;
+  nextReviewAt: string;
+  lastReviewAt: string | null;
+}
+
 interface ReviewQuestion extends Question {
   lastResult: string | null;
-  lastPracticedAt: string | null;
+  spacedReputation?: SpacedReputation;
 }
 
 const typeLabels: Record<string, string> = {
@@ -92,17 +121,26 @@ const resultLabels: Record<string, string> = {
 const questions = ref<ReviewQuestion[]>([]);
 const loading = ref(false);
 
-onMounted(async () => {
+async function fetchSm2Queue() {
   loading.value = true;
   try {
-    questions.value = (await practiceApi.getReviewQueue()) as ReviewQuestion[];
+    questions.value = (await practiceApi.getSm2ReviewQueue()) as ReviewQuestion[];
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(fetchSm2Queue);
 </script>
 
 <style scoped>
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
 .review-list {
   display: flex;
   flex-direction: column;
@@ -172,8 +210,29 @@ onMounted(async () => {
   font-size: 1rem;
   font-weight: 600;
   color: #37352f;
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
   line-height: 1.5;
+}
+
+.q-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sm2-info {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #787774;
+}
+
+.sm2-item {
+  background: #f7f6f3;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .q-time {
@@ -193,6 +252,11 @@ onMounted(async () => {
 
 .empty-content {
   text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
 }
 
 .empty-content h3 {

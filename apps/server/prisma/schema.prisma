@@ -226,3 +226,12 @@ model User {
 
   @@index([email])
 }
+
+// ============================================================
+// 系统配置：存储 AI 设置等
+// ============================================================
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

@@ -125,6 +125,44 @@
             placeholder="写下你的解答思路（可选）..."
             rows="4"
           />
+          <div class="ai-toggle">
+            <label class="toggle-label">
+              <input
+                v-model="enableAiAnalysis"
+                type="checkbox"
+              >
+              <span>提交后 AI 分析答案</span>
+            </label>
+          </div>
+        </div>
+
+        <div
+          v-if="aiAnalysis"
+          class="ai-analysis-card"
+        >
+          <div class="analysis-header">
+            <span class="analysis-title">AI 分析结果</span>
+            <span :class="['analysis-score', aiScoreClass]">{{ aiAnalysis.score }}分</span>
+          </div>
+          <div class="analysis-feedback">
+            {{ aiAnalysis.feedback }}
+          </div>
+          <div
+            v-if="aiAnalysis.suggestions?.length"
+            class="analysis-suggestions"
+          >
+            <div class="suggestions-label">
+              改进建议
+            </div>
+            <ul>
+              <li
+                v-for="(s, i) in aiAnalysis.suggestions"
+                :key="i"
+              >
+                {{ s }}
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div class="submit-actions">
@@ -369,6 +407,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { usePracticeStore } from '@/stores/practice';
 import { useFilterStore } from '@/stores/filter';
+import { aiApi } from '@/api';
 import type { PracticeResult } from '@interview-quiz/shared';
 import Modal from '@/components/Modal.vue';
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue';
@@ -389,6 +428,10 @@ const startTime = ref(Date.now());
 const elapsedTime = ref(0);
 let timerInterval: ReturnType<typeof setInterval> | null = null;
 
+const enableAiAnalysis = ref(false);
+const aiAnalysis = ref<{ score: number; feedback: string; suggestions: string[] } | null>(null);
+const aiAnalyzing = ref(false);
+
 const showStartDialog = ref(false);
 const startParams = reactive({
   count: 10,
@@ -404,6 +447,13 @@ const progressPercent = computed(() => {
   return Math.round(
     ((sessionStats.value.total - sessionStats.value.pending) / sessionStats.value.total) * 100,
   );
+});
+
+const aiScoreClass = computed(() => {
+  if (!aiAnalysis.value) return '';
+  if (aiAnalysis.value.score >= 80) return 'high';
+  if (aiAnalysis.value.score >= 60) return 'medium';
+  return 'low';
 });
 
 function formatTime(ms: number) {
@@ -451,15 +501,36 @@ async function endSession() {
 async function handleSkip() {
   stopTimer();
   myAnswer.value = '';
+  aiAnalysis.value = null;
   await store.skipQuestion();
   if (currentQuestion.value) startTimer();
+}
+
+async function analyzeWithAi() {
+  if (!currentQuestion.value || !myAnswer.value) return;
+  aiAnalyzing.value = true;
+  try {
+    const result = await aiApi.analyzeAnswer({
+      questionId: currentQuestion.value.id,
+      userAnswer: myAnswer.value,
+    });
+    aiAnalysis.value = result;
+  } catch (err) {
+    console.error('AI 分析失败:', err);
+  } finally {
+    aiAnalyzing.value = false;
+  }
 }
 
 async function submit(result: PracticeResult) {
   const durationMs = stopTimer();
   await store.submitAnswer(result, myAnswer.value || undefined);
-  myAnswer.value = '';
 
+  if (enableAiAnalysis.value && myAnswer.value) {
+    await analyzeWithAi();
+  }
+
+  myAnswer.value = '';
   await store.fetchNextQuestion();
   if (currentQuestion.value) {
     startTimer();
@@ -826,5 +897,101 @@ onUnmounted(() => {
 
 .tag-option input {
   width: auto;
+}
+
+.my-answer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #787774;
+  cursor: pointer;
+}
+
+.toggle-label input {
+  width: auto;
+}
+
+.ai-analysis-card {
+  padding: 16px;
+  background: #f0f7ff;
+  border: 1px solid #d0e4f7;
+  border-radius: 4px;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.analysis-title {
+  font-weight: 500;
+  color: #37352f;
+}
+
+.analysis-score {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 4px;
+}
+
+.analysis-score.high {
+  background: #e6f5f0;
+  color: #0f7b6c;
+}
+
+.analysis-score.medium {
+  background: #fef3e0;
+  color: #d9730d;
+}
+
+.analysis-score.low {
+  background: #fde8e8;
+  color: #eb5757;
+}
+
+.analysis-feedback {
+  font-size: 14px;
+  color: #37352f;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.analysis-suggestions {
+  border-top: 1px solid #d0e4f7;
+  padding-top: 12px;
+}
+
+.suggestions-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #787774;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.analysis-suggestions ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.analysis-suggestions li {
+  font-size: 13px;
+  color: #37352f;
+  margin-bottom: 4px;
 }
 </style>
