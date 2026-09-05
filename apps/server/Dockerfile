@@ -28,7 +28,6 @@ RUN pnpm install --prod --ignore-scripts
 COPY --from=base /app/apps/server/dist ./apps/server/dist
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
 COPY --from=base /app/apps/server/prisma ./apps/server/prisma
-COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=base /app/node_modules/@prisma ./node_modules/@prisma
 
 WORKDIR /app/apps/server
