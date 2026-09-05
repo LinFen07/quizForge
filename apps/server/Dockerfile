@@ -23,7 +23,7 @@ COPY --from=base /app/package.json ./
 COPY --from=base /app/apps/server/package.json ./apps/server/
 COPY --from=base /app/packages/shared/package.json ./packages/shared/
 COPY .npmrc ./
-RUN pnpm install --prod
+RUN pnpm install --prod --ignore-scripts
 
 COPY --from=base /app/apps/server/dist ./apps/server/dist
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
