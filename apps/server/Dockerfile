@@ -10,6 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY apps/server/ ./apps/server/
 COPY packages/shared/ ./packages/shared/
 RUN pnpm --filter @quiz-forge/shared build
+RUN pnpm --filter @quiz-forge/server prisma:generate
 RUN pnpm --filter @quiz-forge/server build
 
 FROM node:20-alpine AS production
@@ -24,6 +25,7 @@ RUN pnpm install --prod --frozen-lockfile
 COPY --from=base /app/apps/server/dist ./apps/server/dist
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
 COPY --from=base /app/apps/server/prisma ./apps/server/prisma
+RUN pnpm --filter @quiz-forge/server prisma:generate
 
 WORKDIR /app/apps/server
 EXPOSE 3000

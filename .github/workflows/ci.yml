@@ -54,6 +54,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        run: pnpm --filter @quiz-forge/server prisma:generate
+
       - name: Run server tests
         run: pnpm --filter @quiz-forge/server test
 
@@ -91,6 +94,9 @@ jobs:
 
       - name: Build shared
         run: pnpm --filter @quiz-forge/shared build
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @quiz-forge/server prisma:generate
 
       - name: Build server
         run: pnpm --filter @quiz-forge/server build

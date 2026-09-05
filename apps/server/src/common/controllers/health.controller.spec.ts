@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { HealthController } from './health.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -32,13 +33,10 @@ describe('HealthController', () => {
       expect(result.timestamp).toBeDefined();
     });
 
-    it('should return error status when database is disconnected', async () => {
+    it('should throw ServiceUnavailableException when database is disconnected', async () => {
       prisma.$queryRaw.mockRejectedValue(new Error('Connection refused'));
 
-      const result = await controller.check();
-
-      expect(result.status).toBe('error');
-      expect(result.database).toBe('disconnected');
+      await expect(controller.check()).rejects.toThrow(ServiceUnavailableException);
     });
   });
 });
