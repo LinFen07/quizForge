@@ -5,7 +5,7 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json ./apps/server/
 COPY packages/shared/package.json ./packages/shared/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 COPY apps/server/ ./apps/server/
 COPY packages/shared/ ./packages/shared/
@@ -20,7 +20,7 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY --from=base /app/pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY --from=base /app/apps/server/package.json ./apps/server/
 COPY --from=base /app/packages/shared/package.json ./packages/shared/
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 COPY --from=base /app/apps/server/dist ./apps/server/dist
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
