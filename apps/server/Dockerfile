@@ -1,6 +1,6 @@
 FROM node:20-alpine AS base
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json ./apps/server/
@@ -15,7 +15,7 @@ RUN pnpm --filter @quiz-forge/server build
 
 FROM node:20-alpine AS production
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9 --activate
 
 COPY --from=base /app/pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY --from=base /app/apps/server/package.json ./apps/server/
