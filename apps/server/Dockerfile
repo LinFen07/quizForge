@@ -2,7 +2,7 @@ FROM node:20-alpine AS base
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 COPY apps/server/package.json ./apps/server/
 COPY packages/shared/package.json ./packages/shared/
 RUN pnpm install
@@ -17,7 +17,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
-COPY --from=base /app/pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY --from=base /app/pnpm-workspace.yaml pnpm-lock.yaml package.json .npmrc ./
 COPY --from=base /app/apps/server/package.json ./apps/server/
 COPY --from=base /app/packages/shared/package.json ./packages/shared/
 RUN pnpm install --prod
