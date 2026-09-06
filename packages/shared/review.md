@@ -61,7 +61,7 @@
 
 - 单用户数据量小（几千条题目），完全够用
 - 零运维：不需要单独部署数据库服务
-- **备份 = 复制文件**：`cp quiz.db backup.db`，迁移 = 拷走文件
+- **备份 = 复制文件**：`cp quiz.db backup.db`（注意：WAL 模式下需先执行 `PRAGMA wal_checkpoint;` 确保数据落盘，或用 `sqlite3 quiz.db ".backup backup.db"` 安全备份）
 - 一个文件就是整个库，调试时直接用 Prisma Studio 可视化查看
 
 **代价：** 并发写入受限、无原生 JSON、扩展性差。但对个人工具，这些无所谓。
@@ -410,7 +410,7 @@ async submitReview(questionId: number, result: string) {
 ```prisma
 model SpacedReputation {
   id            Int      @id @default(autoincrement())
-  questionId    Int      @unique
+  questionId    Int      @unique  // 与 Question 1:1 关系
   repetition    Int      @default(0)    // 已复习次数
   easeFactor    Float    @default(2.5)  // 难度因子
   intervalDays  Int      @default(0)    // 当前间隔天数
@@ -418,6 +418,8 @@ model SpacedReputation {
   lastReviewAt  DateTime?
 }
 ```
+
+**关系说明：** `SpacedReputation` 与 `Question` 是 1:1 关系（通过 `questionId @unique`），不是与 `PracticeRecord` 1:1。每次用户作答时，更新的是该题目的唯一 SM-2 调度状态——正确率、间隔、难度因子都累积在同一记录上。
 
 ### 7.5 复习队列
 
@@ -731,18 +733,23 @@ async importQuestions(data: any[]): Promise<ImportResult> {
 
 **根因：** SQLite 文件存在容器内部，容器销毁时数据一起删除。
 
-**修复：** 卷挂载：
+**修复：** 只挂载数据库文件，不要挂载整个 prisma 目录（会遮蔽镜像内的 migrations）：
 
 ```yaml
 volumes:
-  - db-data:/app/apps/server/prisma # 持久化 SQLite 文件
+  - ./data:/app/data # 只挂载数据库文件目录
+```
+
+```env
+# .env
+DATABASE_URL="file:/app/data/dev.db"
 ```
 
 ### 12.3 Prisma 查询无超时，慢查询挂死接口
 
-**现象：** 数据库慢查询时，接口无限等待，线程被占用。
+**现象：** 数据库慢查询时，接口无限等待，连接被占用。
 
-**修复：** `Promise.race` + 3 秒超时：
+**修复：** `Promise.race` + 3 秒超时，快速失败的是调用方：
 
 ```typescript
 await Promise.race([
@@ -750,6 +757,8 @@ await Promise.race([
   new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
 ]);
 ```
+
+**注意：** `Promise.race` 只是放弃等待，底层 Prisma 查询仍会继续执行直到完成。Node.js 是单线程事件循环，不存在"线程释放"。要彻底根治，需要在 Prisma 层配置 `query_timeout` 或使用连接池策略。
 
 ---
 
