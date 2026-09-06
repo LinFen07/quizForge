@@ -74,7 +74,12 @@
 
 **场景：** 项目跑在 localhost，只有自己用。但健康检查探针需要被 Docker/K8s 访问，而业务接口不需要外部访问。
 
-**决策：** 预留 JWT 认证，但默认不启用。用 `@Public()` 装饰器标记公开接口（如健康检查），业务接口默认需要认证。
+**决策：** 预留 JWT 认证框架，但默认不启用（AuthModule 被注释掉）。用 `@Public()` 装饰器标记公开接口（如健康检查），业务接口默认需要认证。
+
+```typescript
+// app.module.ts - AuthModule 被注释掉
+// import { AuthModule } from './modules/auth/auth.module';
+```
 
 ### 2.2 实现：守卫 + 装饰器
 
@@ -198,12 +203,13 @@ async check() {
 
 如果中间某一步失败，数据就不一致了。
 
-**修复：** 用 Prisma 事务包裹：
+**修复：** 用 Prisma 事务包裹核心写操作：
 
 ```typescript
-await this.prisma.$transaction(async (tx) => {
+// 核心刷题记录在事务内（必须成功）
+const record = await this.prisma.$transaction(async (tx) => {
   // 1. 插入刷题记录
-  const record = await tx.practiceRecord.create({ data: {...} });
+  const r = await tx.practiceRecord.create({ data: {...} });
 
   // 2. 更新会话快照状态
   await tx.sessionQuestion.updateMany({
@@ -217,9 +223,15 @@ await this.prisma.$transaction(async (tx) => {
     data: { updatedAt: new Date() },
   });
 
-  return record;
+  return r;
 });
+
+// 非核心操作在事务外（失败不影响刷题记录）
+await this.spacedReputation.submitReview(dto.questionId, dto.result);  // SM-2
+await this.audit.log({ entity: 'practice', ... });  // 审计日志
 ```
+
+**为什么 SM-2 和审计日志在事务外？** 这两个操作是「增强功能」，不是核心业务。SM-2 更新失败不影响刷题记录，审计日志写入失败不影响用户体验。放在事务外避免了级联失败，同时降低事务持有时间。
 
 ### 4.2 事务边界原则
 
@@ -420,6 +432,31 @@ const where = {
 
 **价值：** 科学间隔复习，比「每天刷」效率高 3-5 倍。用户无需手动管理复习计划。
 
+### 7.6 事务边界考量
+
+**问题：** SM-2 更新应该放在刷题事务内还是外？
+
+**分析：**
+
+| 方案   | 优点                   | 缺点                            |
+| ------ | ---------------------- | ------------------------------- |
+| 事务内 | 强一致性，一起成功失败 | 事务变长，SM-2 失败导致刷题失败 |
+| 事务外 | 刷题不受影响，事务短   | 弱一致性，SM-2 可能不同步       |
+
+**决策：** 事务外。理由：
+
+- SM-2 是辅助功能，不是核心业务
+- 单用户场景，并发低，一致性风险可控
+- 失败时下次提交会重新计算，最终一致
+
+```typescript
+// 核心操作（事务内）
+const record = await this.prisma.$transaction(async (tx) => { ... });
+
+// 辅助操作（事务外，失败可容忍）
+await this.spacedReputation.submitReview(questionId, result);
+```
+
 ---
 
 ## 八、AI 辅助功能
@@ -579,7 +616,7 @@ request.interceptors.response.use(
 
 ```json
 {
-  "timestamp": "2025-01-15T10:30:00.000Z",
+  "timestamp": "2026-09-05T10:30:00.000Z",
   "level": "INFO",
   "method": "GET",
   "url": "/api/questions",
@@ -759,6 +796,7 @@ await Promise.race([
 - TypeScript strict mode 从头开始
 - 补单元测试 + E2E 测试（当前只有基础测试）
 - 接入 Redis 缓存统计数据（如果数据量增长）
+- AI 适配器用依赖注入容器管理，而非手动实例化（当前每次 settings 变更需要重新创建适配器）
 
 ### 14.3 适用场景
 
